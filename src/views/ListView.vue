@@ -322,16 +322,16 @@ const handleSave = async () => {
     if (formType.value === 'meal' || formType.value === 'extra') {
       if (formData.value.amount === '' || formData.value.amount === null) return alert('请输入金额')
 
-      // 👇 核心修复：清洗数据，确保金额一定是数字，文本一定是字符串
       const data = {
         date: String(formData.value.date),
         type: String(formData.value.type),
-        amount: Number(formData.value.amount), // 确保是数字
+        amount: Number(formData.value.amount),
         tag: String(formData.value.tag || ''),
         note: String(formData.value.note || ''),
         images: formData.value.images || [],
       }
 
+      // 👇 直接传 editingId.value，repo 里会自动找
       if (editingId.value) {
         if (formType.value === 'meal') await mealRepo.updateMeal(editingId.value, data)
         else await extraRepo.updateExtra(editingId.value, data)
@@ -340,16 +340,12 @@ const handleSave = async () => {
         else await extraRepo.addExtra(data)
       }
     } else {
-      // 食材也是同理
       const validItems = formData.value.items
         .filter(
           (item) =>
             item.name && item.name.trim() !== '' && item.amount !== '' && item.amount !== null,
         )
-        .map((item) => ({
-          name: String(item.name),
-          amount: Number(item.amount),
-        }))
+        .map((item) => ({ name: String(item.name), amount: Number(item.amount) }))
 
       if (validItems.length === 0) return alert('请至少填写一项有效的食材')
 
@@ -375,8 +371,9 @@ const handleSave = async () => {
       expandedDates.value.push(formData.value.date)
     }
   } catch (error) {
-    console.error('保存出错详细信息:', error) // 方便以后排查
-    alert('保存失败，请重试')
+    console.error('保存出错详细信息:', error)
+    // 👇 核心改动：直接在手机上弹窗显示真正的报错原因！
+    alert('保存失败原因：' + (error.message || JSON.stringify(error)))
   }
 }
 </script>
