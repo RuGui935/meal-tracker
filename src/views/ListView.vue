@@ -320,13 +320,15 @@ const removeIngItem = (index) => {
 const handleSave = async () => {
   try {
     if (formType.value === 'meal' || formType.value === 'extra') {
-      if (formData.value.amount === '') return alert('请输入金额')
+      if (formData.value.amount === '' || formData.value.amount === null) return alert('请输入金额')
+
+      // 👇 核心修复：清洗数据，确保金额一定是数字，文本一定是字符串
       const data = {
-        date: formData.value.date,
-        type: formData.value.type,
-        amount: Number(formData.value.amount),
-        tag: formData.value.tag,
-        note: formData.value.note,
+        date: String(formData.value.date),
+        type: String(formData.value.type),
+        amount: Number(formData.value.amount), // 确保是数字
+        tag: String(formData.value.tag || ''),
+        note: String(formData.value.note || ''),
         images: formData.value.images || [],
       }
 
@@ -338,12 +340,24 @@ const handleSave = async () => {
         else await extraRepo.addExtra(data)
       }
     } else {
+      // 食材也是同理
       const validItems = formData.value.items
-        .filter((item) => item.name.trim() !== '' && item.amount !== '')
-        .map((item) => ({ name: item.name, amount: Number(item.amount) }))
+        .filter(
+          (item) =>
+            item.name && item.name.trim() !== '' && item.amount !== '' && item.amount !== null,
+        )
+        .map((item) => ({
+          name: String(item.name),
+          amount: Number(item.amount),
+        }))
+
       if (validItems.length === 0) return alert('请至少填写一项有效的食材')
 
-      const ingData = { date: formData.value.date, items: validItems, note: '' }
+      const ingData = {
+        date: String(formData.value.date),
+        items: validItems,
+        note: String(formData.value.note || ''),
+      }
 
       if (editingId.value) {
         await ingredientRepo.updateIngredient(editingId.value, ingData)
@@ -361,8 +375,8 @@ const handleSave = async () => {
       expandedDates.value.push(formData.value.date)
     }
   } catch (error) {
-    console.error(error)
-    alert('保存失败')
+    console.error('保存出错详细信息:', error) // 方便以后排查
+    alert('保存失败，请重试')
   }
 }
 </script>
