@@ -193,13 +193,26 @@ import confetti from 'canvas-confetti'
 
 // ================= 主题配置 =================
 const themes = [
-  { name: '暮色', bg: 'linear-gradient(135deg, #2b2b45 0%, #3d2a4a 40%, #e69d8d 100%)' },
-  { name: '森林', bg: 'linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)' },
-  { name: '深海', bg: 'linear-gradient(135deg, #141e30 0%, #243b55 100%)' },
-  { name: '樱花', bg: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%)' },
+  {
+    name: '极光幻境',
+    bg: 'linear-gradient(135deg, #0a192f 0%, #00b4db 60%, #a8ff78 100%)',
+  },
+  {
+    name: '深海霓虹',
+    bg: 'linear-gradient(135deg, #000428 0%, #004e92 60%, #00d2ff 100%)',
+  },
+  {
+    name: '樱花晚霞',
+    bg: 'linear-gradient(135deg, #d4145a 0%, #fbb03b 100%)',
+  },
+  {
+    name: '赛博日落',
+    bg: 'linear-gradient(135deg, #2b1055 0%, #7597de 50%, #ff7e5f 100%)',
+  },
 ]
 const currentThemeIndex = ref(0)
 const currentTheme = computed(() => themes[currentThemeIndex.value])
+// ============================================
 
 // 初始化主题
 onMounted(() => {
