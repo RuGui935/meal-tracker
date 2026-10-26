@@ -6,19 +6,23 @@
       <button class="arrow-btn" @click="changeMonth(1)">›</button>
     </header>
 
-    <!-- 渐变卡片 -->
-    <div class="summary-card">
+    <!-- 👇 渐变卡片：动态绑定背景色 -->
+    <div class="summary-card" :style="{ background: currentTheme.bg }">
       <div class="card-content">
         <div class="card-label">本月总花费</div>
         <div class="card-amount"><span class="currency">¥</span>{{ monthTotal.toFixed(2) }}</div>
       </div>
+      <!-- 👇 新增：切换主题的小按钮 -->
+      <div class="theme-toggle-btn" @click="switchTheme">
+        <span>🎨</span>
+      </div>
       <div class="card-bg-deco"></div>
     </div>
 
-    <!-- 成就系统提示区 -->
+    <!-- 成就提示 -->
     <div v-if="achievementMsg" class="achievement-toast">🏆 成就达成：{{ achievementMsg }}</div>
 
-    <!-- 居家食材专区 -->
+    <!-- 食材区 -->
     <div class="ingredient-section" v-if="monthIngredients.length > 0">
       <div class="ingredient-header" @click="showIngredients = !showIngredients">
         <div class="ing-title">
@@ -40,7 +44,7 @@
       </div>
     </div>
 
-    <!-- 排序工具栏 -->
+    <!-- 排序栏 -->
     <div class="list-toolbar">
       <span>每日明细</span>
       <button class="sort-btn" @click="toggleSort">
@@ -82,10 +86,10 @@
       </div>
     </div>
 
-    <!-- 滚动隐藏按钮 -->
+    <!-- 悬浮按钮（带滑动隐藏） -->
     <button class="fab-btn" :class="{ 'hide-fab': isScrollingDown }" @click="openAddForm">+</button>
 
-    <!-- 弹窗 -->
+    <!-- 表单弹窗 -->
     <div v-if="showForm" class="modal-overlay" @click.self="showForm = false">
       <div class="modal-content">
         <h3>{{ editingId ? '修改记录' : '记一笔' }}</h3>
@@ -185,7 +189,31 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, toRaw } from 'vue'
 import { mealRepo, extraRepo, ingredientRepo, statsRepo } from '../services/mealRepo'
-import confetti from 'canvas-confetti' // 引入撒花
+import confetti from 'canvas-confetti'
+
+// ================= 主题配置 =================
+const themes = [
+  { name: '暮色', bg: 'linear-gradient(135deg, #2b2b45 0%, #3d2a4a 40%, #e69d8d 100%)' },
+  { name: '森林', bg: 'linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)' },
+  { name: '深海', bg: 'linear-gradient(135deg, #141e30 0%, #243b55 100%)' },
+  { name: '樱花', bg: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%)' },
+]
+const currentThemeIndex = ref(0)
+const currentTheme = computed(() => themes[currentThemeIndex.value])
+
+// 初始化主题
+onMounted(() => {
+  const savedTheme = localStorage.getItem('cardTheme')
+  if (savedTheme !== null) {
+    currentThemeIndex.value = Number(savedTheme)
+  }
+})
+
+const switchTheme = () => {
+  currentThemeIndex.value = (currentThemeIndex.value + 1) % themes.length
+  localStorage.setItem('cardTheme', currentThemeIndex.value)
+}
+// ============================================
 
 const currentDate = new Date()
 const currentYear = ref(currentDate.getFullYear())
@@ -285,7 +313,7 @@ const deleteRecord = async (type, id) => {
   loadData()
 }
 
-// ================= 滚动隐藏 =================
+// 滚动隐藏
 const isScrollingDown = ref(false)
 let lastScrollTop = 0
 const handleScroll = () => {
@@ -297,7 +325,7 @@ const handleScroll = () => {
 onMounted(() => window.addEventListener('scroll', handleScroll))
 onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 
-// ================= 表单与保存逻辑 =================
+// 表单
 const showForm = ref(false)
 const formType = ref('meal')
 const editingId = ref(null)
@@ -335,18 +363,14 @@ const removeIngItem = (index) => {
   formData.value.items.splice(index, 1)
 }
 
-// 触发撒花与成就
 const triggerCelebration = (amount, type) => {
   if (!editingId.value) {
-    // 撒花特效
     confetti({
       particleCount: 80,
       spread: 70,
       origin: { y: 0.8 },
       colors: ['#ff5722', '#ff9800', '#4caf50'],
     })
-
-    // 简单成就判断 (当天喝奶茶)
     if (type === 'extra' && formData.value.type === 'milkTea') {
       achievementMsg.value = '奶茶续命成功！🥤'
       setTimeout(() => {
@@ -376,7 +400,7 @@ const handleSave = async () => {
       } else {
         if (formType.value === 'meal') await mealRepo.addMeal(data)
         else await extraRepo.addExtra(data)
-        triggerCelebration(data.amount, formType.value) // 触发特效
+        triggerCelebration(data.amount, formType.value)
       }
     } else {
       const rawData = toRaw(formData.value)
@@ -413,14 +437,6 @@ const handleSave = async () => {
 </script>
 
 <style scoped>
-/* 暗黑模式兼容的基础变量 */
-:root {
-  --bg-color: #f5f5f5;
-  --card-bg: #fff;
-  --text-color: #333;
-  --sub-text: #999;
-}
-
 .header {
   display: flex;
   justify-content: space-between;
@@ -448,12 +464,12 @@ const handleSave = async () => {
 .summary-card {
   margin: 0 15px 15px;
   border-radius: 16px;
-  background: linear-gradient(135deg, #2b2b45 0%, #3d2a4a 40%, #e69d8d 100%);
   padding: 25px 20px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 8px 20px rgba(61, 42, 74, 0.3);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
   color: #fff;
+  transition: background 0.5s ease;
 }
 .card-content {
   position: relative;
@@ -482,6 +498,28 @@ const handleSave = async () => {
   top: -50px;
   right: -20px;
   z-index: 1;
+}
+
+/* 主题切换按钮 */
+.theme-toggle-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  z-index: 5;
+  background: rgba(255, 255, 255, 0.2);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  font-size: 18px;
+  backdrop-filter: blur(4px);
+  transition: transform 0.2s;
+}
+.theme-toggle-btn:active {
+  transform: scale(0.9);
 }
 
 /* 成就弹窗 */
