@@ -7,35 +7,37 @@
     </header>
 
     <div class="calendar-container">
-      <!-- 星期表头 -->
       <div class="weekdays">
         <span v-for="day in ['一', '二', '三', '四', '五', '六', '日']" :key="day">{{ day }}</span>
       </div>
 
-      <!-- 日期格子 -->
       <div class="days-grid">
-        <!-- 补全前面的空白格 -->
         <div v-for="n in firstDayOffset" :key="'empty' + n" class="day-cell empty"></div>
 
-        <!-- 真正的日期 -->
         <div
           v-for="day in daysInMonth"
           :key="day"
           class="day-cell"
           :class="{
             today: isToday(day),
-            'has-record': recordedDates.includes(day),
+            'has-record': dailyTotals[day] > 0,
           }"
         >
           <span class="day-num">{{ day }}</span>
-          <!-- 有记录的打个勾 -->
-          <span v-if="recordedDates.includes(day)" class="check-mark">✓</span>
+          <!-- 特殊印记 -->
+          <span v-if="dailyTotals[day] > 50" class="mark-icon fire">🔥</span>
+          <span v-else-if="dailyTotals[day] > 0 && dailyTotals[day] <= 10" class="mark-icon leaf"
+            >🍃</span
+          >
+          <span v-else-if="dailyTotals[day] > 0" class="mark-icon check">✓</span>
         </div>
       </div>
     </div>
 
     <div class="legend">
-      <span class="legend-item"><span class="dot"></span> 当日有记录</span>
+      <span class="legend-item"><span class="icon">✓</span> 正常记录</span>
+      <span class="legend-item"><span class="icon">🔥</span> 花费>50</span>
+      <span class="legend-item"><span class="icon">🍃</span> 花费≤10</span>
     </div>
   </div>
 </template>
@@ -47,40 +49,39 @@ import { mealRepo, extraRepo, ingredientRepo } from '../services/mealRepo'
 const currentDate = new Date()
 const currentYear = ref(currentDate.getFullYear())
 const currentMonth = ref(currentDate.getMonth() + 1)
-const recordedDates = ref([])
+const dailyTotals = ref({}) // 存储每天的总花费 { '1': 20, '2': 5 }
 
-const yearMonthStr = computed(() => {
-  const m = String(currentMonth.value).padStart(2, '0')
-  return `${currentYear.value}-${m}`
-})
+const yearMonthStr = computed(
+  () => `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}`,
+)
 
-// 计算当前月第一天是星期几 (1-7, 周一为1)
 const firstDayOffset = computed(() => {
   const firstDay = new Date(currentYear.value, currentMonth.value - 1, 1).getDay()
-  return firstDay === 0 ? 6 : firstDay - 1 // 调整为周一开头
+  return firstDay === 0 ? 6 : firstDay - 1
 })
 
-// 计算当前月有多少天
-const daysInMonth = computed(() => {
-  return new Date(currentYear.value, currentMonth.value, 0).getDate()
-})
+const daysInMonth = computed(() => new Date(currentYear.value, currentMonth.value, 0).getDate())
 
 const loadData = async () => {
-  // 去三张表里把所有有记录的日期捞出来，去重
   const meals = await mealRepo.getMealsByMonth(yearMonthStr.value)
   const extras = await extraRepo.getExtrasByMonth(yearMonthStr.value)
   const ings = await ingredientRepo.getIngredientsByMonth(yearMonthStr.value)
 
-  const dates = new Set()
-  meals.forEach((m) => dates.add(m.date))
-  extras.forEach((e) => dates.add(e.date))
-  ings.forEach((i) => dates.add(i.date))
+  const totals = {}
+  const add = (date, amount) => {
+    const d = parseInt(date.split('-')[2])
+    totals[d] = (totals[d] || 0) + amount
+  }
 
-  // 提取出纯日期的数字，比如 '2026-10-22' 变成 22
-  recordedDates.value = Array.from(dates).map((d) => {
-    const parts = d.split('-')
-    return parseInt(parts[2])
+  meals.forEach((m) => add(m.date, m.amount))
+  extras.forEach((e) => add(e.date, e.amount))
+  ings.forEach((i) => {
+    let sum = 0
+    i.items.forEach((item) => (sum += item.amount))
+    add(i.date, sum)
   })
+
+  dailyTotals.value = totals
 }
 
 watch(yearMonthStr, loadData)
@@ -120,45 +121,45 @@ const isToday = (day) => {
   justify-content: space-between;
   align-items: center;
   padding: 15px;
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 8px;
   margin-bottom: 15px;
+  transition: background 0.3s;
 }
 .arrow-btn {
   font-size: 24px;
   background: none;
   border: none;
-  color: #333;
+  color: var(--text-color);
   cursor: pointer;
 }
 .month-title {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
+  color: var(--text-color);
 }
 
 .calendar-container {
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 12px;
   padding: 15px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: background 0.3s;
 }
-
 .weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   text-align: center;
   font-size: 12px;
-  color: #999;
+  color: var(--sub-text);
   margin-bottom: 10px;
 }
-
 .days-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 5px;
 }
-
 .day-cell {
   position: relative;
   aspect-ratio: 1;
@@ -167,6 +168,7 @@ const isToday = (day) => {
   align-items: center;
   border-radius: 8px;
   font-size: 16px;
+  color: var(--text-color);
 }
 .day-cell.empty {
   background: transparent;
@@ -177,35 +179,33 @@ const isToday = (day) => {
   color: #ff5722;
 }
 .day-cell.has-record {
-  background: #fff5f2;
+  background: rgba(255, 87, 34, 0.1);
   color: #ff5722;
 }
 
-.check-mark {
+.mark-icon {
   position: absolute;
   bottom: 2px;
   right: 4px;
-  font-size: 10px;
+  font-size: 12px;
+}
+.mark-icon.check {
   color: #ff5722;
   font-weight: bold;
+  font-size: 10px;
 }
 
 .legend {
   margin-top: 20px;
-  text-align: center;
   font-size: 12px;
-  color: #999;
+  color: var(--sub-text);
   display: flex;
   justify-content: center;
-  align-items: center;
-  gap: 5px;
+  gap: 15px;
 }
-.dot {
-  width: 8px;
-  height: 8px;
-  background: #fff5f2;
-  border: 1px solid #ff5722;
-  border-radius: 50%;
-  display: inline-block;
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 </style>
