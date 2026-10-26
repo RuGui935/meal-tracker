@@ -498,38 +498,45 @@ const handleSave = async () => {
   }
 }
 
-/* 弹窗样式 */
+/* ======== 悬浮窗弹窗样式 ======== */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
-  align-items: flex-end;
+  align-items: center; /* 👈 改为居中 */
   justify-content: center;
-  z-index: 1000;
+  z-index: 9999; /* 👈 层级提高到 9999，绝对盖住底部 Tab */
+  padding: 20px; /* 👈 四周留出空隙 */
 }
+
 .modal-content {
   background: #fff;
   width: 100%;
-  max-width: 600px;
-  border-radius: 16px 16px 0 0;
+  max-width: 400px; /* 👈 限制最大宽度，电脑上也是个小窗 */
+  border-radius: 16px; /* 👈 四周全圆角，更像悬浮卡片 */
   padding: 20px;
   box-sizing: border-box;
-  max-height: 90vh;
+  max-height: 85vh;
   overflow-y: auto;
-  animation: slideUp 0.3s ease-out;
+  animation: scaleIn 0.3s ease-out; /* 👈 动画改成缩放弹出 */
 }
-@keyframes slideUp {
+
+/* 替换原来的 slideUp 动画 */
+@keyframes scaleIn {
   from {
-    transform: translateY(100%);
+    transform: scale(0.9);
+    opacity: 0;
   }
   to {
-    transform: translateY(0);
+    transform: scale(1);
+    opacity: 1;
   }
 }
+
 .modal-content h3 {
   margin-top: 0;
   text-align: center;
@@ -559,13 +566,14 @@ const handleSave = async () => {
   font-weight: bold;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
+
 .form-row {
   display: flex;
   align-items: center;
   margin-bottom: 15px;
 }
 .form-row label {
-  width: 80px;
+  width: 70px;
   color: #333;
   font-size: 14px;
 }
@@ -584,6 +592,7 @@ const handleSave = async () => {
   border-color: #ff5722;
   background: #fff;
 }
+
 .ing-inputs {
   border: 1px dashed #ccc;
   padding: 10px;
@@ -614,6 +623,7 @@ const handleSave = async () => {
   cursor: pointer;
   font-size: 14px;
 }
+
 .form-actions {
   display: flex;
   gap: 10px;
