@@ -6,23 +6,19 @@
       <button class="arrow-btn" @click="changeMonth(1)">›</button>
     </header>
 
-    <!-- 👇 渐变卡片：动态绑定背景色 -->
     <div class="summary-card" :style="{ background: currentTheme.bg }">
       <div class="card-content">
         <div class="card-label">本月总花费</div>
         <div class="card-amount"><span class="currency">¥</span>{{ monthTotal.toFixed(2) }}</div>
       </div>
-      <!-- 👇 新增：切换主题的小按钮 -->
       <div class="theme-toggle-btn" @click="switchTheme">
         <span>🎨</span>
       </div>
       <div class="card-bg-deco"></div>
     </div>
 
-    <!-- 成就提示 -->
     <div v-if="achievementMsg" class="achievement-toast">🏆 成就达成：{{ achievementMsg }}</div>
 
-    <!-- 食材区 -->
     <div class="ingredient-section" v-if="monthIngredients.length > 0">
       <div class="ingredient-header" @click="showIngredients = !showIngredients">
         <div class="ing-title">
@@ -34,9 +30,9 @@
         <div v-for="ing in monthIngredients" :key="'top-i' + ing.id" class="ing-record">
           <span class="ing-date">{{ formatDate(ing.date) }}</span>
           <div class="ing-items">
-            <span v-for="(item, idx) in ing.items" :key="idx" class="ing-tag">
-              {{ item.name }} ¥{{ item.amount }}
-            </span>
+            <span v-for="(item, idx) in ing.items" :key="idx" class="ing-tag"
+              >{{ item.name }} ¥{{ item.amount }}</span
+            >
           </div>
           <button class="del-icon edit-icon" @click="openEditForm('ingredient', ing)">✏️</button>
           <button class="del-icon" @click="deleteRecord('ingredient', ing.id)">×</button>
@@ -44,7 +40,6 @@
       </div>
     </div>
 
-    <!-- 排序栏 -->
     <div class="list-toolbar">
       <span>每日明细</span>
       <button class="sort-btn" @click="toggleSort">
@@ -55,7 +50,17 @@
     <div class="list-container">
       <div v-if="groupedData.length === 0" class="empty-state">这个月还没有日常三餐记录哦~</div>
 
-      <div v-for="day in groupedData" :key="day.date" class="day-group">
+      <!-- 给每个 day-group 加上 ref，方便跳转时定位 -->
+      <div
+        v-for="day in groupedData"
+        :key="day.date"
+        class="day-group"
+        :ref="
+          (el) => {
+            if (el) dayRefs[day.date] = el
+          }
+        "
+      >
         <div class="day-header" @click="toggleExpand(day.date)">
           <div class="date-info">
             <span class="date-text">{{ formatDate(day.date) }}</span>
@@ -86,10 +91,9 @@
       </div>
     </div>
 
-    <!-- 悬浮按钮（带滑动隐藏） -->
     <button class="fab-btn" :class="{ 'hide-fab': isScrollingDown }" @click="openAddForm">+</button>
 
-    <!-- 表单弹窗 -->
+    <!-- 弹窗（保持不变） -->
     <div v-if="showForm" class="modal-overlay" @click.self="showForm = false">
       <div class="modal-content">
         <h3>{{ editingId ? '修改记录' : '记一笔' }}</h3>
@@ -187,47 +191,33 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch, toRaw } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, toRaw, nextTick } from 'vue'
+import { useRoute } from 'vue-router' // 👈 引入路由
 import { mealRepo, extraRepo, ingredientRepo, statsRepo } from '../services/mealRepo'
 import confetti from 'canvas-confetti'
 
+const route = useRoute() // 👈 获取当前路由参数
+
 // ================= 主题配置 =================
 const themes = [
-  {
-    name: '极光幻境',
-    bg: 'linear-gradient(135deg, #0a192f 0%, #00b4db 60%, #a8ff78 100%)',
-  },
-  {
-    name: '深海霓虹',
-    bg: 'linear-gradient(135deg, #000428 0%, #004e92 60%, #00d2ff 100%)',
-  },
-  {
-    name: '樱花晚霞',
-    bg: 'linear-gradient(135deg, #d4145a 0%, #fbb03b 100%)',
-  },
-  {
-    name: '赛博日落',
-    bg: 'linear-gradient(135deg, #2b1055 0%, #7597de 50%, #ff7e5f 100%)',
-  },
+  { name: '极光幻境', bg: 'linear-gradient(135deg, #0a192f 0%, #00b4db 60%, #a8ff78 100%)' },
+  { name: '深海霓虹', bg: 'linear-gradient(135deg, #000428 0%, #004e92 60%, #00d2ff 100%)' },
+  { name: '樱花晚霞', bg: 'linear-gradient(135deg, #d4145a 0%, #fbb03b 100%)' },
+  { name: '赛博日落', bg: 'linear-gradient(135deg, #2b1055 0%, #7597de 50%, #ff7e5f 100%)' },
 ]
 const currentThemeIndex = ref(0)
 const currentTheme = computed(() => themes[currentThemeIndex.value])
-// ============================================
 
-// 初始化主题
 onMounted(() => {
   const savedTheme = localStorage.getItem('cardTheme')
-  if (savedTheme !== null) {
-    currentThemeIndex.value = Number(savedTheme)
-  }
+  if (savedTheme !== null) currentThemeIndex.value = Number(savedTheme)
 })
-
 const switchTheme = () => {
   currentThemeIndex.value = (currentThemeIndex.value + 1) % themes.length
   localStorage.setItem('cardTheme', currentThemeIndex.value)
 }
-// ============================================
 
+// ================= 核心数据 =================
 const currentDate = new Date()
 const currentYear = ref(currentDate.getFullYear())
 const currentMonth = ref(currentDate.getMonth() + 1)
@@ -240,6 +230,9 @@ const expandedDates = ref([])
 const isDesc = ref(true)
 const showIngredients = ref(false)
 const achievementMsg = ref('')
+
+// 用于 DOM 滚动的引用
+const dayRefs = ref({})
 
 const mealLabel = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐' }
 const extraLabel = { milkTea: '奶茶', drink: '饮料', snack: '小吃', junk: '零食', fruit: '水果' }
@@ -256,6 +249,29 @@ const loadData = async () => {
   monthTotal.value = stats.total
   ingredientTotal.value = stats.ingredientTotal
 }
+
+// 👇 监听路由变化：如果是从月历或统计跳转过来的，自动切月并滚动
+watch(
+  () => route.query,
+  async (newQuery) => {
+    if (newQuery.date) {
+      const [y, m] = newQuery.date.split('-')
+      currentYear.value = Number(y)
+      currentMonth.value = Number(m)
+      await loadData() // 等待数据加载完成
+      expandedDates.value.push(newQuery.date) // 自动展开那天
+
+      // 等待 DOM 渲染完毕后，滚动到对应位置
+      nextTick(() => {
+        const targetEl = dayRefs.value[newQuery.date]
+        if (targetEl) {
+          targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      })
+    }
+  },
+  { immediate: true },
+) // 页面挂载时立即执行一次
 
 watch(yearMonthStr, loadData)
 onMounted(loadData)
@@ -326,7 +342,6 @@ const deleteRecord = async (type, id) => {
   loadData()
 }
 
-// 滚动隐藏
 const isScrollingDown = ref(false)
 let lastScrollTop = 0
 const handleScroll = () => {
@@ -338,11 +353,10 @@ const handleScroll = () => {
 onMounted(() => window.addEventListener('scroll', handleScroll))
 onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 
-// 表单
+// 表单逻辑（保持不变）
 const showForm = ref(false)
 const formType = ref('meal')
 const editingId = ref(null)
-
 const initFormData = () => {
   const today = new Date().toISOString().split('T')[0]
   if (formType.value === 'meal')
@@ -351,7 +365,6 @@ const initFormData = () => {
     return { date: today, type: 'milkTea', amount: '', tag: '', note: '' }
   return { date: today, items: [{ name: '', amount: '' }] }
 }
-
 const formData = ref(initFormData())
 const openAddForm = () => {
   formType.value = 'meal'
@@ -368,7 +381,6 @@ const openEditForm = (type, record) => {
 watch(formType, () => {
   if (!editingId.value) formData.value = initFormData()
 })
-
 const addIngItem = () => {
   formData.value.items.push({ name: '', amount: '' })
 }
@@ -450,6 +462,7 @@ const handleSave = async () => {
 </script>
 
 <style scoped>
+/* 样式与之前完全一致，直接复制之前的即可，这里省略以节省字数 */
 .header {
   display: flex;
   justify-content: space-between;
@@ -472,8 +485,6 @@ const handleSave = async () => {
   font-weight: 600;
   color: var(--text-color);
 }
-
-/* 卡片 */
 .summary-card {
   margin: 0 15px 15px;
   border-radius: 16px;
@@ -512,8 +523,6 @@ const handleSave = async () => {
   right: -20px;
   z-index: 1;
 }
-
-/* 主题切换按钮 */
 .theme-toggle-btn {
   position: absolute;
   top: 15px;
@@ -534,8 +543,6 @@ const handleSave = async () => {
 .theme-toggle-btn:active {
   transform: scale(0.9);
 }
-
-/* 成就弹窗 */
 .achievement-toast {
   position: fixed;
   top: 20px;
@@ -561,8 +568,6 @@ const handleSave = async () => {
     opacity: 1;
   }
 }
-
-/* 食材区 */
 .ingredient-section {
   margin: 0 15px 15px;
   background: var(--card-bg);
@@ -621,8 +626,6 @@ const handleSave = async () => {
   padding: 3px 8px;
   border-radius: 4px;
 }
-
-/* 列表 */
 .list-toolbar {
   display: flex;
   justify-content: space-between;
@@ -745,8 +748,6 @@ const handleSave = async () => {
   font-size: 14px;
   margin-right: 5px;
 }
-
-/* 悬浮按钮 */
 .fab-btn {
   position: fixed;
   bottom: 75px;
@@ -776,8 +777,6 @@ const handleSave = async () => {
   transform: scale(0.7) translateY(20px);
   pointer-events: none;
 }
-
-/* 弹窗 */
 .modal-overlay {
   position: fixed;
   top: 0;

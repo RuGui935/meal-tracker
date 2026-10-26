@@ -14,19 +14,26 @@
     <div class="card">
       <h3>月度分布</h3>
       <div class="monthly-bars">
-        <div v-for="(m, index) in monthlyData" :key="index" class="bar-row">
+        <!-- 👇 绑定点击事件，并且加上动态高亮类名 -->
+        <div
+          v-for="(m, index) in monthlyData"
+          :key="index"
+          class="bar-row"
+          :class="{ active: selectedMonth === index + 1 }"
+          @click="selectMonth(index + 1)"
+        >
           <span class="m-label">{{ index + 1 }}月</span>
           <div class="bar-bg">
             <div class="bar-fill" :style="{ width: getBarWidth(m.total) }"></div>
           </div>
-          <!-- 👇 在这里加上 toFixed(2) 解决长小数 -->
           <span class="m-val">¥{{ m.total.toFixed(2) }}</span>
         </div>
       </div>
     </div>
 
+    <!-- 👇 这里标题跟着变，数据也跟着变 -->
     <div class="card">
-      <h3>分类明细 ({{ currentMonth }}月)</h3>
+      <h3>分类明细 ({{ selectedMonth }}月)</h3>
       <div v-if="monthStats" class="category-list">
         <div class="cat-item">
           <span>正餐</span><span>¥{{ monthStats.mealTotal.toFixed(2) }}</span>
@@ -50,21 +57,18 @@
           <span>食材</span><span>¥{{ monthStats.ingredientTotal.toFixed(2) }}</span>
         </div>
       </div>
+      <div v-else class="empty-state">该月暂无数据</div>
     </div>
 
-    <!-- 数据备份区 -->
     <div class="card backup-card">
       <h3>数据备份与导出</h3>
       <p class="tip">数据仅保存在当前浏览器，换手机或清缓存会丢失。JSON可恢复，CSV/TXT方便查看。</p>
-
       <div class="backup-actions">
         <button class="btn-json" @click="exportJSON">导出备份 (JSON)</button>
-        <label class="btn-import">
-          导入恢复
-          <input type="file" accept=".json" @change="importData" style="display: none" />
-        </label>
+        <label class="btn-import"
+          >导入恢复<input type="file" accept=".json" @change="importData" style="display: none"
+        /></label>
       </div>
-
       <div class="backup-actions" style="margin-top: 10px">
         <button class="btn-csv" @click="exportCSV">导出表格 (CSV)</button>
         <button class="btn-txt" @click="exportTXT">导出文本 (TXT)</button>
@@ -80,21 +84,40 @@ import { db } from '../db/index'
 
 const currentDate = new Date()
 const currentYear = ref(currentDate.getFullYear())
-const currentMonth = ref(currentDate.getMonth() + 1)
+// 当前选中的月份，默认是现在的月份
+const selectedMonth = ref(currentDate.getMonth() + 1)
 
 const monthlyData = ref([])
 const yearTotal = ref(0)
 const monthStats = ref(null)
 
+// 加载整年数据
 const loadYearData = async () => {
   monthlyData.value = await statsRepo.getYearMonthlyTotals(currentYear.value)
   yearTotal.value = monthlyData.value.reduce((sum, m) => sum + m.total, 0)
-  const mStr = String(currentMonth.value).padStart(2, '0')
+
+  // 初始加载时，加载默认选中的月份明细
+  await loadMonthDetails()
+}
+
+// 加载单个月份的明细
+const loadMonthDetails = async () => {
+  const mStr = String(selectedMonth.value).padStart(2, '0')
   monthStats.value = await statsRepo.getMonthStats(`${currentYear.value}-${mStr}`)
 }
 
 onMounted(loadYearData)
-watch(currentYear, loadYearData)
+
+// 切换年份时，重新加载全年数据和明细
+watch(currentYear, async () => {
+  await loadYearData()
+})
+
+// 👇 核心逻辑：点击哪个月，就更新选中状态并重新查该月数据
+const selectMonth = async (month) => {
+  selectedMonth.value = month
+  await loadMonthDetails()
+}
 
 const changeYear = (offset) => {
   currentYear.value += offset
@@ -106,6 +129,7 @@ const getBarWidth = (amount) => {
   return `${(amount / maxVal) * 100}%`
 }
 
+// 导出导入逻辑（保持不变）
 const downloadFile = (content, filename, type) => {
   const blob = new Blob([content], { type })
   const url = URL.createObjectURL(blob)
@@ -230,42 +254,45 @@ const importData = (event) => {
   justify-content: space-between;
   align-items: center;
   padding: 15px;
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 8px;
   margin-bottom: 15px;
+  transition: background 0.3s;
 }
 .arrow-btn {
   font-size: 24px;
   background: none;
   border: none;
-  color: #333;
+  color: var(--text-color);
   cursor: pointer;
 }
 .month-title {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
+  color: var(--text-color);
 }
 .card {
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 15px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: background 0.3s;
 }
 .card h3 {
   margin-top: 0;
   font-size: 16px;
-  color: #333;
+  color: var(--text-color);
   margin-bottom: 15px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
   padding-bottom: 10px;
 }
 .total-card {
   text-align: center;
 }
 .total-label {
-  color: #666;
+  color: var(--sub-text);
   font-size: 14px;
   margin-bottom: 5px;
 }
@@ -279,19 +306,35 @@ const importData = (event) => {
   flex-direction: column;
   gap: 8px;
 }
+
+/* 👇 给月度的行加了高亮样式 */
 .bar-row {
   display: flex;
   align-items: center;
   font-size: 12px;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  transition: all 0.2s;
 }
+.bar-row.active {
+  background: rgba(255, 152, 0, 0.15);
+  transform: scale(1.02);
+}
+.bar-row.active .m-label,
+.bar-row.active .m-val {
+  color: #ff9800;
+  font-weight: bold;
+}
+
 .m-label {
   width: 35px;
-  color: #666;
+  color: var(--sub-text);
 }
 .bar-bg {
   flex: 1;
   height: 12px;
-  background: #f0f0f0;
+  background: rgba(128, 128, 128, 0.1);
   border-radius: 6px;
   margin: 0 10px;
   overflow: hidden;
@@ -306,8 +349,9 @@ const importData = (event) => {
   width: 60px;
   text-align: right;
   font-family: monospace;
-  color: #333;
+  color: var(--text-color);
 }
+
 .category-list {
   display: flex;
   flex-direction: column;
@@ -317,20 +361,27 @@ const importData = (event) => {
   display: flex;
   justify-content: space-between;
   font-size: 14px;
-  color: #555;
-  border-bottom: 1px dashed #eee;
+  color: var(--text-color);
+  border-bottom: 1px dashed rgba(128, 128, 128, 0.2);
   padding-bottom: 8px;
 }
 .cat-item:last-child {
   border-bottom: none;
   padding-bottom: 0;
 }
+.empty-state {
+  text-align: center;
+  color: var(--sub-text);
+  font-size: 13px;
+  padding: 10px 0;
+}
+
 .backup-card {
   margin-top: 20px;
 }
 .tip {
   font-size: 12px;
-  color: #888;
+  color: var(--sub-text);
   margin-bottom: 15px;
   line-height: 1.5;
 }

@@ -14,6 +14,7 @@
       <div class="days-grid">
         <div v-for="n in firstDayOffset" :key="'empty' + n" class="day-cell empty"></div>
 
+        <!-- 👇 给格子加上了点击事件，跳转到列表 -->
         <div
           v-for="day in daysInMonth"
           :key="day"
@@ -22,9 +23,9 @@
             today: isToday(day),
             'has-record': dailyTotals[day] > 0,
           }"
+          @click="jumpToDay(day)"
         >
           <span class="day-num">{{ day }}</span>
-          <!-- 特殊印记 -->
           <span v-if="dailyTotals[day] > 50" class="mark-icon fire">🔥</span>
           <span v-else-if="dailyTotals[day] > 0 && dailyTotals[day] <= 10" class="mark-icon leaf"
             >🍃</span
@@ -44,12 +45,15 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router' // 👈 引入路由
 import { mealRepo, extraRepo, ingredientRepo } from '../services/mealRepo'
+
+const router = useRouter() // 👈 实例化
 
 const currentDate = new Date()
 const currentYear = ref(currentDate.getFullYear())
 const currentMonth = ref(currentDate.getMonth() + 1)
-const dailyTotals = ref({}) // 存储每天的总花费 { '1': 20, '2': 5 }
+const dailyTotals = ref({})
 
 const yearMonthStr = computed(
   () => `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}`,
@@ -110,9 +114,19 @@ const isToday = (day) => {
     today.getDate() === day
   )
 }
+
+// 👇 核心跳转逻辑
+const jumpToDay = (day) => {
+  if (dailyTotals.value[day] > 0) {
+    // 如果这天有记录，就带上日期参数跳回首页
+    const dateStr = `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    router.push({ path: '/', query: { date: dateStr } })
+  }
+}
 </script>
 
 <style scoped>
+/* 样式保持原样即可，直接复制之前的 */
 .calendar-page {
   padding: 10px;
 }
@@ -139,7 +153,6 @@ const isToday = (day) => {
   font-weight: 600;
   color: var(--text-color);
 }
-
 .calendar-container {
   background: var(--card-bg);
   border-radius: 12px;
@@ -169,6 +182,7 @@ const isToday = (day) => {
   border-radius: 8px;
   font-size: 16px;
   color: var(--text-color);
+  cursor: pointer;
 }
 .day-cell.empty {
   background: transparent;
@@ -182,7 +196,6 @@ const isToday = (day) => {
   background: rgba(255, 87, 34, 0.1);
   color: #ff5722;
 }
-
 .mark-icon {
   position: absolute;
   bottom: 2px;
@@ -194,7 +207,6 @@ const isToday = (day) => {
   font-weight: bold;
   font-size: 10px;
 }
-
 .legend {
   margin-top: 20px;
   font-size: 12px;
