@@ -104,8 +104,14 @@
               ><input type="number" v-model="formData.amount" placeholder="0.00" />
             </div>
             <div class="form-row">
-              <label>标签</label
-              ><input type="text" v-model="formData.tag" placeholder="如：外卖/家里吃" />
+              <label>标签</label>
+              <input type="text" v-model="formData.tag" list="meal-tags" placeholder="选或输入" />
+              <datalist id="meal-tags">
+                <option value="外卖"></option>
+                <option value="家里吃"></option>
+                <option value="出去吃"></option>
+                <option value="食堂"></option>
+              </datalist>
             </div>
             <div class="form-row">
               <label>备注</label
@@ -130,8 +136,15 @@
               ><input type="number" v-model="formData.amount" placeholder="0.00" />
             </div>
             <div class="form-row">
-              <label>牌子/标签</label
-              ><input type="text" v-model="formData.tag" placeholder="如：蜜雪冰城" />
+              <label>牌子/标签</label>
+              <input type="text" v-model="formData.tag" list="extra-tags" placeholder="选或输入" />
+              <datalist id="extra-tags">
+                <option value="蜜雪冰城"></option>
+                <option value="瑞幸"></option>
+                <option value="霸王茶姬"></option>
+                <option value="超市"></option>
+                <option value="路边摊"></option>
+              </datalist>
             </div>
             <div class="form-row">
               <label>备注</label
