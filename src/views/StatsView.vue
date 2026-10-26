@@ -19,7 +19,8 @@
           <div class="bar-bg">
             <div class="bar-fill" :style="{ width: getBarWidth(m.total) }"></div>
           </div>
-          <span class="m-val">¥{{ m.total }}</span>
+          <!-- 👇 在这里加上 toFixed(2) 解决长小数 -->
+          <span class="m-val">¥{{ m.total.toFixed(2) }}</span>
         </div>
       </div>
     </div>
@@ -105,7 +106,6 @@ const getBarWidth = (amount) => {
   return `${(amount / maxVal) * 100}%`
 }
 
-// 通用下载函数
 const downloadFile = (content, filename, type) => {
   const blob = new Blob([content], { type })
   const url = URL.createObjectURL(blob)
@@ -120,7 +120,6 @@ const downloadFile = (content, filename, type) => {
 
 const getTodayStr = () => new Date().toISOString().split('T')[0]
 
-// 1. 导出 JSON
 const exportJSON = async () => {
   try {
     const meals = await db.meals.toArray()
@@ -142,15 +141,12 @@ const exportJSON = async () => {
   }
 }
 
-// 2. 导出 CSV (Excel可以打开)
 const exportCSV = async () => {
   try {
     const meals = await db.meals.toArray()
     const extras = await db.extras.toArray()
     const ingredients = await db.ingredients.toArray()
-
-    let csv = '\uFEFF日期,类型,大类,明细项,金额,标签,备注\n' // \uFEFF 防Excel乱码
-
+    let csv = '\uFEFF日期,类型,大类,明细项,金额,标签,备注\n'
     meals.forEach((m) => {
       csv += `${m.date},正餐,${m.type},,${m.amount},${m.tag || ''},${m.note || ''}\n`
     })
@@ -162,7 +158,6 @@ const exportCSV = async () => {
         csv += `${i.date},食材,食材,${item.name},${item.amount},,\n`
       })
     })
-
     downloadFile(csv, `伙食记账表格_${getTodayStr()}.csv`, 'text/csv;charset=utf-8')
   } catch (e) {
     console.log(e)
@@ -170,15 +165,12 @@ const exportCSV = async () => {
   }
 }
 
-// 3. 导出 TXT
 const exportTXT = async () => {
   try {
     const meals = await db.meals.toArray()
     const extras = await db.extras.toArray()
     const ingredients = await db.ingredients.toArray()
-
     let txt = `伙食记账文本备份 - ${new Date().toLocaleString()}\n\n`
-
     meals.forEach((m) => {
       txt += `[正餐] ${m.date} ${m.type} - ¥${m.amount} (${m.tag || ''} ${m.note || ''})\n`
     })
@@ -192,7 +184,6 @@ const exportTXT = async () => {
       })
       txt += '\n'
     })
-
     downloadFile(txt, `伙食记账文本_${getTodayStr()}.txt`, 'text/plain;charset=utf-8')
   } catch (e) {
     console.log(e)
@@ -200,11 +191,9 @@ const exportTXT = async () => {
   }
 }
 
-// 4. 导入 JSON
 const importData = (event) => {
   const file = event.target.files[0]
   if (!file) return
-
   const reader = new FileReader()
   reader.onload = async (e) => {
     try {
@@ -336,7 +325,6 @@ const importData = (event) => {
   border-bottom: none;
   padding-bottom: 0;
 }
-
 .backup-card {
   margin-top: 20px;
 }
