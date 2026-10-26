@@ -175,7 +175,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+// 把 toRaw 加进去
+import { ref, computed, onMounted, watch, toRaw } from 'vue'
 import { mealRepo, extraRepo, ingredientRepo, statsRepo } from '../services/mealRepo'
 
 const currentDate = new Date()
@@ -322,16 +323,18 @@ const handleSave = async () => {
     if (formType.value === 'meal' || formType.value === 'extra') {
       if (formData.value.amount === '' || formData.value.amount === null) return alert('请输入金额')
 
+      // 👇 使用 toRaw 彻底剥离 Vue 的响应式代理
+      const rawData = toRaw(formData.value)
+
       const data = {
-        date: String(formData.value.date),
-        type: String(formData.value.type),
-        amount: Number(formData.value.amount),
-        tag: String(formData.value.tag || ''),
-        note: String(formData.value.note || ''),
-        images: formData.value.images || [],
+        date: String(rawData.date),
+        type: String(rawData.type),
+        amount: Number(rawData.amount),
+        tag: String(rawData.tag || ''),
+        note: String(rawData.note || ''),
+        images: rawData.images || [],
       }
 
-      // 👇 直接传 editingId.value，repo 里会自动找
       if (editingId.value) {
         if (formType.value === 'meal') await mealRepo.updateMeal(editingId.value, data)
         else await extraRepo.updateExtra(editingId.value, data)
@@ -340,7 +343,10 @@ const handleSave = async () => {
         else await extraRepo.addExtra(data)
       }
     } else {
-      const validItems = formData.value.items
+      // 食材部分也用 toRaw
+      const rawData = toRaw(formData.value)
+
+      const validItems = rawData.items
         .filter(
           (item) =>
             item.name && item.name.trim() !== '' && item.amount !== '' && item.amount !== null,
@@ -350,9 +356,9 @@ const handleSave = async () => {
       if (validItems.length === 0) return alert('请至少填写一项有效的食材')
 
       const ingData = {
-        date: String(formData.value.date),
+        date: String(rawData.date),
         items: validItems,
-        note: String(formData.value.note || ''),
+        note: String(rawData.note || ''),
       }
 
       if (editingId.value) {
@@ -372,7 +378,6 @@ const handleSave = async () => {
     }
   } catch (error) {
     console.error('保存出错详细信息:', error)
-    // 👇 核心改动：直接在手机上弹窗显示真正的报错原因！
     alert('保存失败原因：' + (error.message || JSON.stringify(error)))
   }
 }
