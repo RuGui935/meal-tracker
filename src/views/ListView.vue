@@ -34,15 +34,19 @@
             <span class="tag">{{ mealLabel[meal.type] }}</span>
             <span class="note">{{ meal.note || meal.tag || '无备注' }}</span>
             <span class="amount">¥{{ meal.amount }}</span>
+            <button class="del-icon edit-icon" @click="openEditForm('meal', meal)">✏️</button>
             <button class="del-icon" @click="deleteRecord('meal', meal.id)">×</button>
           </div>
+
           <!-- 额外 -->
           <div v-for="extra in day.extras" :key="'e' + extra.id" class="record-item">
             <span class="tag extra-tag">{{ extraLabel[extra.type] }}</span>
             <span class="note">{{ extra.tag || '' }} {{ extra.note }}</span>
             <span class="amount">¥{{ extra.amount }}</span>
+            <button class="del-icon edit-icon" @click="openEditForm('extra', extra)">✏️</button>
             <button class="del-icon" @click="deleteRecord('extra', extra.id)">×</button>
           </div>
+
           <!-- 食材 -->
           <div
             v-for="ing in day.ingredients"
@@ -55,6 +59,7 @@
                 {{ item.name }} ¥{{ item.amount }}
               </span>
             </div>
+            <button class="del-icon edit-icon" @click="openEditForm('ingredient', ing)">✏️</button>
             <button class="del-icon" @click="deleteRecord('ingredient', ing.id)">×</button>
           </div>
         </div>
@@ -63,10 +68,10 @@
 
     <button class="fab-btn" @click="openAddForm">+</button>
 
-    <!-- ================= 新增表单弹窗 ================= -->
+    <!-- ================= 悬浮窗新增/修改表单 ================= -->
     <div v-if="showForm" class="modal-overlay" @click.self="showForm = false">
       <div class="modal-content">
-        <h3>记一笔</h3>
+        <h3>{{ editingId ? '修改记录' : '记一笔' }}</h3>
 
         <div class="type-tabs">
           <button :class="{ active: formType === 'meal' }" @click="formType = 'meal'">三餐</button>
@@ -246,7 +251,7 @@ const getWeekday = (dateStr) => {
   return days[new Date(dateStr).getDay()]
 }
 
-// 删除记录
+// ================= 删除 =================
 const deleteRecord = async (type, id) => {
   if (!confirm('确定删除这条记录吗？')) return
   if (type === 'meal') await mealRepo.deleteMeal(id)
@@ -255,9 +260,11 @@ const deleteRecord = async (type, id) => {
   loadData()
 }
 
-// ================= 新增表单核心逻辑 =================
+// ================= 新增 / 修改逻辑 =================
 const showForm = ref(false)
 const formType = ref('meal')
+const editingId = ref(null) // 记录当前是不是在修改状态
+
 const initFormData = () => {
   const today = new Date().toISOString().split('T')[0]
   if (formType.value === 'meal')
@@ -271,12 +278,23 @@ const formData = ref(initFormData())
 
 const openAddForm = () => {
   formType.value = 'meal'
+  editingId.value = null // 清空修改状态
   formData.value = initFormData()
   showForm.value = true
 }
 
+const openEditForm = (type, record) => {
+  formType.value = type
+  editingId.value = record.id
+  formData.value = JSON.parse(JSON.stringify(record)) // 深拷贝，防止直接修改页面数据
+  showForm.value = true
+}
+
 watch(formType, () => {
-  formData.value = initFormData()
+  // 如果正在修改，切换 tab 就不重置表单了（防止用户误触丢失数据）
+  if (!editingId.value) {
+    formData.value = initFormData()
+  }
 })
 
 const addIngItem = () => {
@@ -296,23 +314,39 @@ const handleSave = async () => {
         amount: Number(formData.value.amount),
         tag: formData.value.tag,
         note: formData.value.note,
-        images: [],
+        images: formData.value.images || [],
       }
-      if (formType.value === 'meal') await mealRepo.addMeal(data)
-      else await extraRepo.addExtra(data)
+
+      if (editingId.value) {
+        if (formType.value === 'meal') await mealRepo.updateMeal(editingId.value, data)
+        else await extraRepo.updateExtra(editingId.value, data)
+      } else {
+        if (formType.value === 'meal') await mealRepo.addMeal(data)
+        else await extraRepo.addExtra(data)
+      }
     } else {
       const validItems = formData.value.items
         .filter((item) => item.name.trim() !== '' && item.amount !== '')
         .map((item) => ({ name: item.name, amount: Number(item.amount) }))
       if (validItems.length === 0) return alert('请至少填写一项有效的食材')
-      await ingredientRepo.addIngredient({ date: formData.value.date, items: validItems, note: '' })
+
+      const ingData = { date: formData.value.date, items: validItems, note: '' }
+
+      if (editingId.value) {
+        await ingredientRepo.updateIngredient(editingId.value, ingData)
+      } else {
+        await ingredientRepo.addIngredient(ingData)
+      }
     }
 
     showForm.value = false
+    editingId.value = null
     formData.value = initFormData()
     await loadData()
-    if (!expandedDates.value.includes(formData.value.date))
+
+    if (!expandedDates.value.includes(formData.value.date)) {
       expandedDates.value.push(formData.value.date)
+    }
   } catch (error) {
     console.error(error)
     alert('保存失败')
@@ -460,6 +494,13 @@ const handleSave = async () => {
 .del-icon:hover {
   color: #f44336;
 }
+.edit-icon {
+  font-size: 14px;
+  margin-right: 5px;
+}
+.edit-icon:hover {
+  color: #ff9800;
+}
 .ing-list {
   display: flex;
   flex-wrap: wrap;
@@ -507,25 +548,22 @@ const handleSave = async () => {
   bottom: 0;
   background: rgba(0, 0, 0, 0.6);
   display: flex;
-  align-items: center; /* 👈 改为居中 */
+  align-items: center;
   justify-content: center;
-  z-index: 9999; /* 👈 层级提高到 9999，绝对盖住底部 Tab */
-  padding: 20px; /* 👈 四周留出空隙 */
+  z-index: 9999;
+  padding: 20px;
 }
-
 .modal-content {
   background: #fff;
   width: 100%;
-  max-width: 400px; /* 👈 限制最大宽度，电脑上也是个小窗 */
-  border-radius: 16px; /* 👈 四周全圆角，更像悬浮卡片 */
+  max-width: 400px;
+  border-radius: 16px;
   padding: 20px;
   box-sizing: border-box;
   max-height: 85vh;
   overflow-y: auto;
-  animation: scaleIn 0.3s ease-out; /* 👈 动画改成缩放弹出 */
+  animation: scaleIn 0.3s ease-out;
 }
-
-/* 替换原来的 slideUp 动画 */
 @keyframes scaleIn {
   from {
     transform: scale(0.9);
@@ -536,7 +574,6 @@ const handleSave = async () => {
     opacity: 1;
   }
 }
-
 .modal-content h3 {
   margin-top: 0;
   text-align: center;
@@ -566,7 +603,6 @@ const handleSave = async () => {
   font-weight: bold;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
-
 .form-row {
   display: flex;
   align-items: center;
@@ -592,7 +628,6 @@ const handleSave = async () => {
   border-color: #ff5722;
   background: #fff;
 }
-
 .ing-inputs {
   border: 1px dashed #ccc;
   padding: 10px;
@@ -623,7 +658,6 @@ const handleSave = async () => {
   cursor: pointer;
   font-size: 14px;
 }
-
 .form-actions {
   display: flex;
   gap: 10px;

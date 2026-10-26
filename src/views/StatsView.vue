@@ -24,7 +24,6 @@
       </div>
     </div>
 
-    <!-- 暂时没做点击切月，这里显示所选年 10 月（或当前月）的分类作为示例 -->
     <div class="card">
       <h3>分类明细 ({{ currentMonth }}月)</h3>
       <div v-if="monthStats" class="category-list">
@@ -51,29 +50,38 @@
         </div>
       </div>
     </div>
+
+    <!-- 数据备份区 -->
+    <div class="card backup-card">
+      <h3>数据备份（重要）</h3>
+      <p class="tip">数据仅保存在当前浏览器，换手机或清缓存会丢失，请定期导出备份。</p>
+      <div class="backup-actions">
+        <button class="btn-export" @click="exportData">导出备份 (JSON)</button>
+        <label class="btn-import">
+          导入恢复
+          <input type="file" accept=".json" @change="importData" style="display: none" />
+        </label>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { statsRepo } from '../services/mealRepo'
+import { db } from '../db/index'
 
 const currentDate = new Date()
 const currentYear = ref(currentDate.getFullYear())
-const currentMonth = ref(currentDate.getMonth() + 1) // 用来显示分类明细，默认当月
+const currentMonth = ref(currentDate.getMonth() + 1)
 
 const monthlyData = ref([])
 const yearTotal = ref(0)
 const monthStats = ref(null)
 
 const loadYearData = async () => {
-  // 1. 获取12个月的总额
   monthlyData.value = await statsRepo.getYearMonthlyTotals(currentYear.value)
-
-  // 2. 计算年总
   yearTotal.value = monthlyData.value.reduce((sum, m) => sum + m.total, 0)
-
-  // 3. 获取当前选中月的详细分类
   const mStr = String(currentMonth.value).padStart(2, '0')
   monthStats.value = await statsRepo.getMonthStats(`${currentYear.value}-${mStr}`)
 }
@@ -85,12 +93,77 @@ const changeYear = (offset) => {
   currentYear.value += offset
 }
 
-// 计算条形图宽度 (百分比)
 const getBarWidth = (amount) => {
   if (yearTotal.value === 0) return '0%'
-  // 找一个最大值作为100%的基准，避免有些月金额太小看不见
   const maxVal = Math.max(...monthlyData.value.map((m) => m.total), 100)
   return `${(amount / maxVal) * 100}%`
+}
+
+// ================= 导出/导入 =================
+const exportData = async () => {
+  try {
+    const meals = await db.meals.toArray()
+    const extras = await db.extras.toArray()
+    const ingredients = await db.ingredients.toArray()
+
+    const backupData = {
+      version: 1,
+      exportTime: new Date().toISOString(),
+      data: { meals, extras, ingredients },
+    }
+
+    const jsonStr = JSON.stringify(backupData, null, 2)
+    const blob = new Blob([jsonStr], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `伙食记账备份_${new Date().toISOString().split('T')[0]}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+
+    alert('导出成功！请妥善保存下载的 JSON 文件。')
+  } catch (error) {
+    console.error(error)
+    alert('导出失败')
+  }
+}
+
+const importData = (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = async (e) => {
+    try {
+      const jsonStr = e.target.result
+      const backupData = JSON.parse(jsonStr)
+
+      if (!backupData.data || !backupData.data.meals) {
+        return alert('文件格式不正确，无法导入')
+      }
+
+      if (!confirm('导入将会覆盖当前所有数据，确定继续吗？')) return
+
+      await db.transaction('rw', db.meals, db.extras, db.ingredients, async () => {
+        await db.meals.clear()
+        await db.extras.clear()
+        await db.ingredients.clear()
+        await db.meals.bulkAdd(backupData.data.meals)
+        await db.extras.bulkAdd(backupData.data.extras)
+        await db.ingredients.bulkAdd(backupData.data.ingredients)
+      })
+
+      alert('导入成功！')
+      loadYearData()
+    } catch (error) {
+      console.error(error)
+      alert('导入失败，文件可能已损坏')
+    }
+  }
+  reader.readAsText(file)
+  event.target.value = ''
 }
 </script>
 
@@ -201,5 +274,41 @@ const getBarWidth = (amount) => {
 .cat-item:last-child {
   border-bottom: none;
   padding-bottom: 0;
+}
+
+/* 备份区样式 */
+.backup-card {
+  margin-top: 20px;
+}
+.tip {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 15px;
+  line-height: 1.5;
+}
+.backup-actions {
+  display: flex;
+  gap: 10px;
+}
+.btn-export,
+.btn-import {
+  flex: 1;
+  padding: 10px;
+  text-align: center;
+  border-radius: 8px;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+}
+.btn-export {
+  background: #4caf50;
+  color: white;
+  font-weight: bold;
+}
+.btn-import {
+  background: #ff9800;
+  color: white;
+  font-weight: bold;
+  display: inline-block;
 }
 </style>
