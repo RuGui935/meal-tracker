@@ -215,7 +215,7 @@ const selectedDayData = computed(() => {
         typeName: '食材',
         typeClass: 'ing',
         note: i.items.map((item) => item.name).join('、'),
-        amount: total,
+        amount: total.toFixed(2),
       })
     })
 
