@@ -227,7 +227,7 @@ const rawIngredients = ref([])
 const monthTotal = ref(0)
 const ingredientTotal = ref(0)
 const expandedDates = ref([])
-const isDesc = ref(true)
+const isDesc = ref(localStorage.getItem('listSortOrder') !== 'asc') // 默认是倒序，除非本地存了正序
 const showIngredients = ref(false)
 const achievementMsg = ref('')
 
@@ -293,10 +293,11 @@ const changeMonth = (offset) => {
 
 const toggleSort = () => {
   isDesc.value = !isDesc.value
+  localStorage.setItem('listSortOrder', isDesc.value ? 'desc' : 'asc')
 }
 
 const monthIngredients = computed(() =>
-  rawIngredients.value.sort((a, b) => b.date.localeCompare(a.date)),
+  [...rawIngredients.value].sort((a, b) => b.date.localeCompare(a.date)),
 )
 
 const groupedData = computed(() => {
