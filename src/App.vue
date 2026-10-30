@@ -1,9 +1,10 @@
 <template>
-  <div class="app-container" :class="{ 'dark-mode': isDark }">
+  <div class="app-container">
     <main class="main-content">
       <router-view />
     </main>
 
+    <!-- 底部导航 -->
     <nav class="bottom-tabs">
       <router-link to="/" class="tab-item">
         <span class="icon">📝</span><span>列表</span>
@@ -14,36 +15,27 @@
       <router-link to="/stats" class="tab-item">
         <span class="icon">📊</span><span>统计</span>
       </router-link>
-      <!-- 暗黑模式开关 -->
-      <div class="tab-item" @click="toggleDark">
-        <span class="icon">{{ isDark ? '☀️' : '🌙' }}</span>
-        <span>{{ isDark ? '日间' : '夜间' }}</span>
-      </div>
+      <!-- 改为设置 -->
+      <router-link to="/settings" class="tab-item">
+        <span class="icon">⚙️</span><span>设置</span>
+      </router-link>
     </nav>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { onMounted } from 'vue'
 
-const isDark = ref(false)
-
+// 页面一加载，恢复暗黑模式
 onMounted(() => {
-  // 读取本地存储的偏好
-  const savedTheme = localStorage.getItem('theme')
-  if (savedTheme === 'dark') {
-    isDark.value = true
+  if (localStorage.getItem('theme') === 'dark') {
+    document.documentElement.classList.add('dark-mode')
   }
 })
-
-const toggleDark = () => {
-  isDark.value = !isDark.value
-  localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
-}
 </script>
 
 <style>
-/* 核心：定义日间模式的 CSS 变量 */
+/* 变量定义 */
 :root {
   --bg-color: #f5f5f5;
   --card-bg: #ffffff;
@@ -51,9 +43,7 @@ const toggleDark = () => {
   --sub-text: #999999;
   --border-color: #eeeeee;
 }
-
-/* 核心：定义暗黑模式覆盖的 CSS 变量 */
-.dark-mode {
+html.dark-mode {
   --bg-color: #121212;
   --card-bg: #1e1e1e;
   --text-color: #e0e0e0;
@@ -66,10 +56,9 @@ body {
   padding: 0;
   background-color: var(--bg-color);
   color: var(--text-color);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: -apple-system, sans-serif;
   transition: background-color 0.3s;
 }
-
 .app-container {
   max-width: 600px;
   margin: 0 auto;
@@ -77,12 +66,10 @@ body {
   background-color: var(--bg-color);
   position: relative;
 }
-
 .main-content {
   padding-bottom: 60px;
 }
 
-/* 底部导航样式 */
 .bottom-tabs {
   position: fixed;
   bottom: 0;
@@ -95,9 +82,7 @@ body {
   display: flex;
   border-top: 1px solid var(--border-color);
   z-index: 2000;
-  transition: background-color 0.3s;
 }
-
 .tab-item {
   flex: 1;
   display: flex;
@@ -107,15 +92,11 @@ body {
   text-decoration: none;
   color: var(--sub-text);
   font-size: 12px;
-  cursor: pointer;
 }
-
 .tab-item .icon {
   font-size: 20px;
   margin-bottom: 2px;
 }
-
-/* 选中状态 */
 .router-link-active {
   color: #ff5722 !important;
   font-weight: bold;

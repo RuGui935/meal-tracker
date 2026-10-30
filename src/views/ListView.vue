@@ -6,19 +6,18 @@
       <button class="arrow-btn" @click="changeMonth(1)">›</button>
     </header>
 
+    <!-- 渐变卡片 -->
     <div class="summary-card" :style="{ background: currentTheme.bg }">
       <div class="card-content">
         <div class="card-label">本月总花费</div>
         <div class="card-amount"><span class="currency">¥</span>{{ monthTotal.toFixed(2) }}</div>
-      </div>
-      <div class="theme-toggle-btn" @click="switchTheme">
-        <span>🎨</span>
       </div>
       <div class="card-bg-deco"></div>
     </div>
 
     <div v-if="achievementMsg" class="achievement-toast">🏆 成就达成：{{ achievementMsg }}</div>
 
+    <!-- 居家食材专区 -->
     <div class="ingredient-section" v-if="monthIngredients.length > 0">
       <div class="ingredient-header" @click="showIngredients = !showIngredients">
         <div class="ing-title">
@@ -40,6 +39,7 @@
       </div>
     </div>
 
+    <!-- 排序栏 -->
     <div class="list-toolbar">
       <span>每日明细</span>
       <button class="sort-btn" @click="toggleSort">
@@ -50,7 +50,6 @@
     <div class="list-container">
       <div v-if="groupedData.length === 0" class="empty-state">这个月还没有日常三餐记录哦~</div>
 
-      <!-- 给每个 day-group 加上 ref，方便跳转时定位 -->
       <div
         v-for="day in groupedData"
         :key="day.date"
@@ -93,7 +92,7 @@
 
     <button class="fab-btn" :class="{ 'hide-fab': isScrollingDown }" @click="openAddForm">+</button>
 
-    <!-- 弹窗（保持不变） -->
+    <!-- 弹窗 -->
     <div v-if="showForm" class="modal-overlay" @click.self="showForm = false">
       <div class="modal-content">
         <h3>{{ editingId ? '修改记录' : '记一笔' }}</h3>
@@ -111,6 +110,7 @@
             <label>日期</label>
             <input type="date" v-model="formData.date" />
           </div>
+
           <template v-if="formType === 'meal'">
             <div class="form-row">
               <label>餐次</label>
@@ -124,9 +124,11 @@
               <label>金额</label
               ><input type="number" v-model="formData.amount" placeholder="0.00" />
             </div>
-            <div class="form-row" style="flex-direction: column; align-items: flex-start">
-              <label style="margin-bottom: 8px">标签</label>
-              <div class="quick-tags">
+
+            <!-- 👇 新的三餐标签滑动行 -->
+            <div class="form-row">
+              <label>标签</label>
+              <div class="tag-scroll-container">
                 <span
                   class="quick-tag"
                   :class="{ active: formData.tag === '外卖' }"
@@ -135,9 +137,9 @@
                 >
                 <span
                   class="quick-tag"
-                  :class="{ active: formData.tag === '家里吃' }"
-                  @click="formData.tag = '家里吃'"
-                  >家里吃</span
+                  :class="{ active: formData.tag === '家里做' }"
+                  @click="formData.tag = '家里做'"
+                  >家里做</span
                 >
                 <span
                   class="quick-tag"
@@ -151,29 +153,21 @@
                   @click="formData.tag = '食堂'"
                   >食堂</span
                 >
+                <input
+                  type="text"
+                  v-model="formData.tag"
+                  placeholder="或自填..."
+                  class="inline-tag-input"
+                />
               </div>
-              <input
-                type="text"
-                v-model="formData.tag"
-                placeholder="或者手动输入自定义标签..."
-                style="
-                  width: 100%;
-                  margin-top: 8px;
-                  padding: 8px;
-                  box-sizing: border-box;
-                  border: 1px solid rgba(128, 128, 128, 0.2);
-                  border-radius: 6px;
-                  font-size: 14px;
-                  background: rgba(128, 128, 128, 0.05);
-                  color: var(--text-color);
-                "
-              />
             </div>
+
             <div class="form-row">
               <label>备注</label
               ><input type="text" v-model="formData.note" placeholder="吃了什么" />
             </div>
           </template>
+
           <template v-if="formType === 'extra'">
             <div class="form-row">
               <label>类别</label>
@@ -189,9 +183,11 @@
               <label>金额</label
               ><input type="number" v-model="formData.amount" placeholder="0.00" />
             </div>
-            <div class="form-row" style="flex-direction: column; align-items: flex-start">
-              <label style="margin-bottom: 8px">牌子/标签</label>
-              <div class="quick-tags">
+
+            <!-- 👇 新的额外标签滑动行 -->
+            <div class="form-row">
+              <label>牌子/标签</label>
+              <div class="tag-scroll-container">
                 <span
                   class="quick-tag"
                   :class="{ active: formData.tag === '蜜雪冰城' }"
@@ -207,7 +203,7 @@
                 <span
                   class="quick-tag"
                   :class="{ active: formData.tag === '霸王茶姬' }"
-                  @click="formData.tag = '霸王茶姬'"
+                  @click="formData.tag = '霸王'"
                   >霸王</span
                 >
                 <span
@@ -216,35 +212,21 @@
                   @click="formData.tag = '超市'"
                   >超市</span
                 >
-                <span
-                  class="quick-tag"
-                  :class="{ active: formData.tag === '路边摊' }"
-                  @click="formData.tag = '路边摊'"
-                  >路边摊</span
-                >
+                <input
+                  type="text"
+                  v-model="formData.tag"
+                  placeholder="或自填..."
+                  class="inline-tag-input"
+                />
               </div>
-              <input
-                type="text"
-                v-model="formData.tag"
-                placeholder="或者手动输入自定义标签..."
-                style="
-                  width: 100%;
-                  margin-top: 8px;
-                  padding: 8px;
-                  box-sizing: border-box;
-                  border: 1px solid rgba(128, 128, 128, 0.2);
-                  border-radius: 6px;
-                  font-size: 14px;
-                  background: rgba(128, 128, 128, 0.05);
-                  color: var(--text-color);
-                "
-              />
             </div>
+
             <div class="form-row">
               <label>备注</label
               ><input type="text" v-model="formData.note" placeholder="喝了/吃了啥" />
             </div>
           </template>
+
           <template v-if="formType === 'ingredient'">
             <div class="ing-inputs">
               <div v-for="(item, index) in formData.items" :key="index" class="form-row">
@@ -267,11 +249,11 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, toRaw, nextTick } from 'vue'
-import { useRoute } from 'vue-router' // 👈 引入路由
+import { useRoute } from 'vue-router'
 import { mealRepo, extraRepo, ingredientRepo, statsRepo } from '../services/mealRepo'
 import confetti from 'canvas-confetti'
 
-const route = useRoute() // 👈 获取当前路由参数
+const route = useRoute()
 
 // ================= 主题配置 =================
 const themes = [
@@ -280,17 +262,8 @@ const themes = [
   { name: '樱花晚霞', bg: 'linear-gradient(135deg, #d4145a 0%, #fbb03b 100%)' },
   { name: '赛博日落', bg: 'linear-gradient(135deg, #2b1055 0%, #7597de 50%, #ff7e5f 100%)' },
 ]
-const currentThemeIndex = ref(0)
+const currentThemeIndex = ref(Number(localStorage.getItem('cardTheme')) || 0)
 const currentTheme = computed(() => themes[currentThemeIndex.value])
-
-onMounted(() => {
-  const savedTheme = localStorage.getItem('cardTheme')
-  if (savedTheme !== null) currentThemeIndex.value = Number(savedTheme)
-})
-const switchTheme = () => {
-  currentThemeIndex.value = (currentThemeIndex.value + 1) % themes.length
-  localStorage.setItem('cardTheme', currentThemeIndex.value)
-}
 
 // ================= 核心数据 =================
 const currentDate = new Date()
@@ -302,11 +275,16 @@ const rawIngredients = ref([])
 const monthTotal = ref(0)
 const ingredientTotal = ref(0)
 const expandedDates = ref([])
-const isDesc = ref(localStorage.getItem('listSortOrder') !== 'asc') // 默认是倒序，除非本地存了正序
+
+// 排序记住状态
+const isDesc = ref(localStorage.getItem('listSortOrder') !== 'asc')
+const toggleSort = () => {
+  isDesc.value = !isDesc.value
+  localStorage.setItem('listSortOrder', isDesc.value ? 'desc' : 'asc')
+}
+
 const showIngredients = ref(false)
 const achievementMsg = ref('')
-
-// 用于 DOM 滚动的引用
 const dayRefs = ref({})
 
 const mealLabel = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐' }
@@ -325,7 +303,6 @@ const loadData = async () => {
   ingredientTotal.value = stats.ingredientTotal
 }
 
-// 👇 监听路由变化：如果是从月历或统计跳转过来的，自动切月并滚动
 watch(
   () => route.query,
   async (newQuery) => {
@@ -333,20 +310,16 @@ watch(
       const [y, m] = newQuery.date.split('-')
       currentYear.value = Number(y)
       currentMonth.value = Number(m)
-      await loadData() // 等待数据加载完成
-      expandedDates.value.push(newQuery.date) // 自动展开那天
-
-      // 等待 DOM 渲染完毕后，滚动到对应位置
+      await loadData()
+      expandedDates.value.push(newQuery.date)
       nextTick(() => {
         const targetEl = dayRefs.value[newQuery.date]
-        if (targetEl) {
-          targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        }
+        if (targetEl) targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
       })
     }
   },
   { immediate: true },
-) // 页面挂载时立即执行一次
+)
 
 watch(yearMonthStr, loadData)
 onMounted(loadData)
@@ -364,11 +337,6 @@ const changeMonth = (offset) => {
   }
   currentYear.value = newYear
   currentMonth.value = newMonth
-}
-
-const toggleSort = () => {
-  isDesc.value = !isDesc.value
-  localStorage.setItem('listSortOrder', isDesc.value ? 'desc' : 'asc')
 }
 
 const monthIngredients = computed(() =>
@@ -418,6 +386,7 @@ const deleteRecord = async (type, id) => {
   loadData()
 }
 
+// 滚动隐藏
 const isScrollingDown = ref(false)
 let lastScrollTop = 0
 const handleScroll = () => {
@@ -429,7 +398,7 @@ const handleScroll = () => {
 onMounted(() => window.addEventListener('scroll', handleScroll))
 onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 
-// 表单逻辑（保持不变）
+// 表单
 const showForm = ref(false)
 const formType = ref('meal')
 const editingId = ref(null)
@@ -538,7 +507,6 @@ const handleSave = async () => {
 </script>
 
 <style scoped>
-/* 样式与之前完全一致，直接复制之前的即可，这里省略以节省字数 */
 .header {
   display: flex;
   justify-content: space-between;
@@ -598,26 +566,6 @@ const handleSave = async () => {
   top: -50px;
   right: -20px;
   z-index: 1;
-}
-.theme-toggle-btn {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  z-index: 5;
-  background: rgba(255, 255, 255, 0.2);
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  font-size: 18px;
-  backdrop-filter: blur(4px);
-  transition: transform 0.2s;
-}
-.theme-toggle-btn:active {
-  transform: scale(0.9);
 }
 .achievement-toast {
   position: fixed;
@@ -925,9 +873,10 @@ const handleSave = async () => {
   width: 70px;
   color: var(--text-color);
   font-size: 14px;
+  flex-shrink: 0;
 }
-.form-row input,
-.form-row select {
+.form-row > input,
+.form-row > select {
   flex: 1;
   padding: 10px;
   border: 1px solid rgba(128, 128, 128, 0.2);
@@ -937,8 +886,8 @@ const handleSave = async () => {
   background: rgba(128, 128, 128, 0.05);
   color: var(--text-color);
 }
-.form-row input:focus,
-.form-row select:focus {
+.form-row > input:focus,
+.form-row > select:focus {
   border-color: #ff5722;
   background: var(--card-bg);
 }
@@ -994,12 +943,21 @@ const handleSave = async () => {
   color: white;
   font-weight: bold;
 }
-/* 快捷标签样式 */
-.quick-tags {
+
+/* 👇 单行横滑标签样式 */
+.tag-scroll-container {
+  flex: 1;
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
-  width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
+  padding-bottom: 4px;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.tag-scroll-container::-webkit-scrollbar {
+  display: none;
 }
 .quick-tag {
   padding: 6px 12px;
@@ -1008,13 +966,24 @@ const handleSave = async () => {
   background: rgba(128, 128, 128, 0.1);
   color: var(--sub-text);
   cursor: pointer;
-  transition: all 0.2s;
   border: 1px solid transparent;
+  flex-shrink: 0;
 }
 .quick-tag.active {
   background: rgba(255, 87, 34, 0.15);
   color: #ff5722;
   border-color: #ff5722;
   font-weight: bold;
+}
+.inline-tag-input {
+  width: 80px;
+  flex-shrink: 0;
+  padding: 6px;
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  border-radius: 20px;
+  font-size: 13px;
+  background: transparent;
+  color: var(--text-color);
+  outline: none;
 }
 </style>
