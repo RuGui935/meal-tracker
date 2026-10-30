@@ -14,7 +14,6 @@
     <div class="card">
       <h3>月度分布</h3>
       <div class="monthly-bars">
-        <!-- 👇 绑定点击事件，并且加上动态高亮类名 -->
         <div
           v-for="(m, index) in monthlyData"
           :key="index"
@@ -31,7 +30,6 @@
       </div>
     </div>
 
-    <!-- 👇 这里标题跟着变，数据也跟着变 -->
     <div class="card">
       <h3>分类明细 ({{ selectedMonth }}月)</h3>
       <div v-if="monthStats" class="category-list">
@@ -66,12 +64,26 @@
       <div class="backup-actions">
         <button class="btn-json" @click="exportJSON">导出备份 (JSON)</button>
         <label class="btn-import"
-          >导入恢复<input type="file" accept=".json" @change="importData" style="display: none"
+          >导入恢复<input type="file" accept=".json" @change="onFileSelect" style="display: none"
         /></label>
       </div>
       <div class="backup-actions" style="margin-top: 10px">
         <button class="btn-csv" @click="exportCSV">导出表格 (CSV)</button>
         <button class="btn-txt" @click="exportTXT">导出文本 (TXT)</button>
+      </div>
+    </div>
+
+    <!-- 👇 自定义导入弹窗 -->
+    <div v-if="importModal.show" class="modal-overlay">
+      <div class="modal-content import-modal">
+        <button class="close-btn" @click="cancelImport">✕</button>
+        <h3>导入数据</h3>
+        <p class="modal-desc">请选择导入方式：</p>
+        <div class="modal-actions">
+          <button class="btn-append" @click="doImport(true)">追加 (保留旧数据)</button>
+          <button class="btn-overwrite" @click="doImport(false)">覆盖 (清空旧数据)</button>
+          <button class="btn-cancel" @click="cancelImport">取消导入</button>
+        </div>
       </div>
     </div>
   </div>
@@ -84,36 +96,26 @@ import { db } from '../db/index'
 
 const currentDate = new Date()
 const currentYear = ref(currentDate.getFullYear())
-// 当前选中的月份，默认是现在的月份
 const selectedMonth = ref(currentDate.getMonth() + 1)
 
 const monthlyData = ref([])
 const yearTotal = ref(0)
 const monthStats = ref(null)
 
-// 加载整年数据
 const loadYearData = async () => {
   monthlyData.value = await statsRepo.getYearMonthlyTotals(currentYear.value)
   yearTotal.value = monthlyData.value.reduce((sum, m) => sum + m.total, 0)
-
-  // 初始加载时，加载默认选中的月份明细
   await loadMonthDetails()
 }
 
-// 加载单个月份的明细
 const loadMonthDetails = async () => {
   const mStr = String(selectedMonth.value).padStart(2, '0')
   monthStats.value = await statsRepo.getMonthStats(`${currentYear.value}-${mStr}`)
 }
 
 onMounted(loadYearData)
+watch(currentYear, loadYearData)
 
-// 切换年份时，重新加载全年数据和明细
-watch(currentYear, async () => {
-  await loadYearData()
-})
-
-// 👇 核心逻辑：点击哪个月，就更新选中状态并重新查该月数据
 const selectMonth = async (month) => {
   selectedMonth.value = month
   await loadMonthDetails()
@@ -129,7 +131,7 @@ const getBarWidth = (amount) => {
   return `${(amount / maxVal) * 100}%`
 }
 
-// 导出导入逻辑（保持不变）
+// ================= 导出 =================
 const downloadFile = (content, filename, type) => {
   const blob = new Blob([content], { type })
   const url = URL.createObjectURL(blob)
@@ -141,7 +143,6 @@ const downloadFile = (content, filename, type) => {
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
 }
-
 const getTodayStr = () => new Date().toISOString().split('T')[0]
 
 const exportJSON = async () => {
@@ -215,37 +216,97 @@ const exportTXT = async () => {
   }
 }
 
-const importData = (event) => {
+// ================= 导入逻辑 =================
+const importModal = ref({ show: false, data: null })
+
+// 选择文件后，暂存数据，弹出选择框
+const onFileSelect = (event) => {
   const file = event.target.files[0]
   if (!file) return
+
   const reader = new FileReader()
-  reader.onload = async (e) => {
+  reader.onload = (e) => {
     try {
       const backupData = JSON.parse(e.target.result)
-      if (!backupData.data || !backupData.data.meals) return alert('文件格式不正确')
-      if (!confirm('导入将会覆盖当前所有数据，确定继续吗？')) return
-
-      await db.transaction('rw', db.meals, db.extras, db.ingredients, async () => {
-        await db.meals.clear()
-        await db.extras.clear()
-        await db.ingredients.clear()
-        await db.meals.bulkAdd(backupData.data.meals)
-        await db.extras.bulkAdd(backupData.data.extras)
-        await db.ingredients.bulkAdd(backupData.data.ingredients)
-      })
-      alert('导入成功！')
-      loadYearData()
-    } catch (e) {
-      console.log(e)
-      alert('导入失败，文件可能已损坏')
+      if (!backupData.data || !backupData.data.meals) {
+        return alert('文件格式不正确')
+      }
+      importModal.value.data = backupData.data
+      importModal.value.show = true
+    } catch (err) {
+      alert('解析失败，文件已损坏')
     }
   }
   reader.readAsText(file)
-  event.target.value = ''
+  event.target.value = '' // 允许重复选同一个文件
+}
+
+// 取消导入
+const cancelImport = () => {
+  importModal.value.show = false
+  importModal.value.data = null
+}
+
+// 执行导入 (isAppend: true = 追加, false = 覆盖)
+const doImport = async (isAppend) => {
+  const data = importModal.value.data
+  if (!data) return
+
+  try {
+    await db.transaction('rw', db.meals, db.extras, db.ingredients, async () => {
+      if (!isAppend) {
+        await db.meals.clear()
+        await db.extras.clear()
+        await db.ingredients.clear()
+      }
+
+      // 1. 三餐
+      for (const m of data.meals) {
+        if (isAppend) {
+          const exist = await db.meals
+            .where({ date: m.date, type: m.type, amount: m.amount, note: m.note })
+            .first()
+          if (!exist) await db.meals.add(m)
+        } else {
+          await db.meals.add(m)
+        }
+      }
+
+      // 2. 额外
+      for (const ex of data.extras) {
+        if (isAppend) {
+          const exist = await db.extras
+            .where({ date: ex.date, type: ex.type, amount: ex.amount, note: ex.note })
+            .first()
+          if (!exist) await db.extras.add(ex)
+        } else {
+          await db.extras.add(ex)
+        }
+      }
+
+      // 3. 食材
+      for (const ing of data.ingredients) {
+        if (isAppend) {
+          const exist = await db.ingredients.where({ date: ing.date, note: ing.note }).first()
+          if (!exist) await db.ingredients.add(ing)
+        } else {
+          await db.ingredients.add(ing)
+        }
+      }
+    })
+
+    alert(isAppend ? '追加导入成功！' : '覆盖导入成功！')
+    cancelImport()
+    loadYearData()
+  } catch (err) {
+    console.error(err)
+    alert('导入失败')
+  }
 }
 </script>
 
 <style scoped>
+/* 原有样式保持不变 */
 .stats-page {
   padding: 10px;
 }
@@ -306,8 +367,6 @@ const importData = (event) => {
   flex-direction: column;
   gap: 8px;
 }
-
-/* 👇 给月度的行加了高亮样式 */
 .bar-row {
   display: flex;
   align-items: center;
@@ -326,7 +385,6 @@ const importData = (event) => {
   color: #ff9800;
   font-weight: bold;
 }
-
 .m-label {
   width: 35px;
   color: var(--sub-text);
@@ -351,7 +409,6 @@ const importData = (event) => {
   font-family: monospace;
   color: var(--text-color);
 }
-
 .category-list {
   display: flex;
   flex-direction: column;
@@ -375,7 +432,6 @@ const importData = (event) => {
   font-size: 13px;
   padding: 10px 0;
 }
-
 .backup-card {
   margin-top: 20px;
 }
@@ -416,5 +472,86 @@ const importData = (event) => {
 .btn-txt {
   background: #9e9e9e;
   color: white;
+}
+
+/* 👇 新增弹窗样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+.import-modal {
+  background: var(--card-bg);
+  width: 100%;
+  max-width: 320px;
+  border-radius: 16px;
+  padding: 20px;
+  position: relative;
+  animation: scaleIn 0.2s ease-out;
+}
+@keyframes scaleIn {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.import-modal h3 {
+  margin-top: 0;
+  text-align: center;
+  color: var(--text-color);
+  margin-bottom: 10px;
+}
+.close-btn {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: var(--sub-text);
+  cursor: pointer;
+}
+.modal-desc {
+  font-size: 13px;
+  color: var(--sub-text);
+  text-align: center;
+  margin-bottom: 20px;
+}
+.modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.modal-actions button {
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  font-size: 15px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.btn-append {
+  background: #4caf50;
+  color: white;
+}
+.btn-overwrite {
+  background: #f44336;
+  color: white;
+}
+.btn-cancel {
+  background: rgba(128, 128, 128, 0.1);
+  color: var(--sub-text);
 }
 </style>

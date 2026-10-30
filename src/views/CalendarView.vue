@@ -52,6 +52,7 @@
 
       <div v-for="item in selectedDayData" :key="item.id" class="detail-item">
         <span class="detail-tag" :class="item.typeClass">{{ item.typeName }}</span>
+        <!-- 👇 这里改成把标签和备注拼起来显示 -->
         <span class="detail-note">{{ item.note }}</span>
         <span class="detail-amount">¥{{ item.amount }}</span>
       </div>
@@ -184,11 +185,13 @@ const selectedDayData = computed(() => {
   rawMeals.value
     .filter((m) => m.date === dateStr)
     .forEach((m) => {
+      // 三餐：如果有标签带上标签，加上备注
+      const noteText = m.tag ? `【${m.tag}】${m.note || ''}` : m.note || '无备注'
       list.push({
         id: 'm' + m.id,
         typeName: mealLabel[m.type],
         typeClass: 'meal',
-        note: m.note || m.tag || '无备注',
+        note: noteText,
         amount: m.amount,
       })
     })
@@ -196,11 +199,13 @@ const selectedDayData = computed(() => {
   rawExtras.value
     .filter((e) => e.date === dateStr)
     .forEach((e) => {
+      // 额外：如果有标签带上标签，加上备注
+      const noteText = e.tag ? `【${e.tag}】${e.note || ''}` : e.note || '无备注'
       list.push({
         id: 'e' + e.id,
         typeName: extraLabel[e.type],
         typeClass: 'extra',
-        note: e.tag || e.note || '无备注',
+        note: noteText,
         amount: e.amount,
       })
     })
@@ -215,7 +220,7 @@ const selectedDayData = computed(() => {
         typeName: '食材',
         typeClass: 'ing',
         note: i.items.map((item) => item.name).join('、'),
-        amount: total.toFixed(2),
+        amount: total,
       })
     })
 

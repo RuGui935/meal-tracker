@@ -124,15 +124,50 @@
               <label>金额</label
               ><input type="number" v-model="formData.amount" placeholder="0.00" />
             </div>
-            <div class="form-row">
-              <label>标签</label
-              ><input type="text" v-model="formData.tag" list="meal-tags" placeholder="选或输入" />
-              <datalist id="meal-tags">
-                <option value="外卖"></option>
-                <option value="家里吃"></option>
-                <option value="出去吃"></option>
-                <option value="食堂"></option>
-              </datalist>
+            <div class="form-row" style="flex-direction: column; align-items: flex-start">
+              <label style="margin-bottom: 8px">标签</label>
+              <div class="quick-tags">
+                <span
+                  class="quick-tag"
+                  :class="{ active: formData.tag === '外卖' }"
+                  @click="formData.tag = '外卖'"
+                  >外卖</span
+                >
+                <span
+                  class="quick-tag"
+                  :class="{ active: formData.tag === '家里吃' }"
+                  @click="formData.tag = '家里吃'"
+                  >家里吃</span
+                >
+                <span
+                  class="quick-tag"
+                  :class="{ active: formData.tag === '出去吃' }"
+                  @click="formData.tag = '出去吃'"
+                  >出去吃</span
+                >
+                <span
+                  class="quick-tag"
+                  :class="{ active: formData.tag === '食堂' }"
+                  @click="formData.tag = '食堂'"
+                  >食堂</span
+                >
+              </div>
+              <input
+                type="text"
+                v-model="formData.tag"
+                placeholder="或者手动输入自定义标签..."
+                style="
+                  width: 100%;
+                  margin-top: 8px;
+                  padding: 8px;
+                  box-sizing: border-box;
+                  border: 1px solid rgba(128, 128, 128, 0.2);
+                  border-radius: 6px;
+                  font-size: 14px;
+                  background: rgba(128, 128, 128, 0.05);
+                  color: var(--text-color);
+                "
+              />
             </div>
             <div class="form-row">
               <label>备注</label
@@ -154,16 +189,56 @@
               <label>金额</label
               ><input type="number" v-model="formData.amount" placeholder="0.00" />
             </div>
-            <div class="form-row">
-              <label>牌子/标签</label
-              ><input type="text" v-model="formData.tag" list="extra-tags" placeholder="选或输入" />
-              <datalist id="extra-tags">
-                <option value="蜜雪冰城"></option>
-                <option value="瑞幸"></option>
-                <option value="霸王茶姬"></option>
-                <option value="超市"></option>
-                <option value="路边摊"></option>
-              </datalist>
+            <div class="form-row" style="flex-direction: column; align-items: flex-start">
+              <label style="margin-bottom: 8px">牌子/标签</label>
+              <div class="quick-tags">
+                <span
+                  class="quick-tag"
+                  :class="{ active: formData.tag === '蜜雪冰城' }"
+                  @click="formData.tag = '蜜雪冰城'"
+                  >蜜雪</span
+                >
+                <span
+                  class="quick-tag"
+                  :class="{ active: formData.tag === '瑞幸' }"
+                  @click="formData.tag = '瑞幸'"
+                  >瑞幸</span
+                >
+                <span
+                  class="quick-tag"
+                  :class="{ active: formData.tag === '霸王茶姬' }"
+                  @click="formData.tag = '霸王茶姬'"
+                  >霸王</span
+                >
+                <span
+                  class="quick-tag"
+                  :class="{ active: formData.tag === '超市' }"
+                  @click="formData.tag = '超市'"
+                  >超市</span
+                >
+                <span
+                  class="quick-tag"
+                  :class="{ active: formData.tag === '路边摊' }"
+                  @click="formData.tag = '路边摊'"
+                  >路边摊</span
+                >
+              </div>
+              <input
+                type="text"
+                v-model="formData.tag"
+                placeholder="或者手动输入自定义标签..."
+                style="
+                  width: 100%;
+                  margin-top: 8px;
+                  padding: 8px;
+                  box-sizing: border-box;
+                  border: 1px solid rgba(128, 128, 128, 0.2);
+                  border-radius: 6px;
+                  font-size: 14px;
+                  background: rgba(128, 128, 128, 0.05);
+                  color: var(--text-color);
+                "
+              />
             </div>
             <div class="form-row">
               <label>备注</label
@@ -917,6 +992,29 @@ const handleSave = async () => {
 .save-btn {
   background: #ff5722;
   color: white;
+  font-weight: bold;
+}
+/* 快捷标签样式 */
+.quick-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+.quick-tag {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  background: rgba(128, 128, 128, 0.1);
+  color: var(--sub-text);
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+.quick-tag.active {
+  background: rgba(255, 87, 34, 0.15);
+  color: #ff5722;
+  border-color: #ff5722;
   font-weight: bold;
 }
 </style>
