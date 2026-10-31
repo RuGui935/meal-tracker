@@ -250,6 +250,7 @@ import { ref, computed, onMounted, onUnmounted, watch, toRaw, nextTick } from 'v
 import { useRoute } from 'vue-router'
 import { mealRepo, extraRepo, ingredientRepo, statsRepo } from '../services/mealRepo'
 import confetti from 'canvas-confetti'
+import { db } from '../db/index' // 👈 加上这一行
 
 const route = useRoute()
 
@@ -447,7 +448,10 @@ const handleSave = async () => {
   try {
     if (formType.value === 'meal' || formType.value === 'extra') {
       if (formData.value.amount === '' || formData.value.amount === null) return alert('请输入金额')
+
       const rawData = toRaw(formData.value)
+
+      // 👇 构造绝对干净的数据对象
       const data = {
         date: String(rawData.date),
         type: String(rawData.type),
@@ -457,10 +461,13 @@ const handleSave = async () => {
         images: rawData.images || [],
       }
 
+      // 👇 核心修复：如果有 editingId，把 id 带上，用 put 直接覆盖！
       if (editingId.value) {
-        if (formType.value === 'meal') await mealRepo.updateMeal(editingId.value, data)
-        else await extraRepo.updateExtra(editingId.value, data)
+        data.id = editingId.value // 必须带上主键
+        if (formType.value === 'meal') await db.meals.put(data)
+        else await db.extras.put(data)
       } else {
+        // 新增
         if (formType.value === 'meal') await mealRepo.addMeal(data)
         else await extraRepo.addExtra(data)
         triggerCelebration(data.amount, formType.value)
@@ -474,13 +481,17 @@ const handleSave = async () => {
         )
         .map((item) => ({ name: String(item.name), amount: Number(item.amount) }))
       if (validItems.length === 0) return alert('请至少填写一项有效的食材')
+
       const ingData = {
         date: String(rawData.date),
         items: validItems,
         note: String(rawData.note || ''),
       }
-      if (editingId.value) await ingredientRepo.updateIngredient(editingId.value, ingData)
-      else {
+
+      if (editingId.value) {
+        ingData.id = editingId.value
+        await db.ingredients.put(ingData)
+      } else {
         await ingredientRepo.addIngredient(ingData)
         triggerCelebration(0, 'ingredient')
       }
@@ -493,8 +504,8 @@ const handleSave = async () => {
     if (!expandedDates.value.includes(formData.value.date))
       expandedDates.value.push(formData.value.date)
   } catch (error) {
-    console.error(error)
-    alert('保存失败：' + error.message)
+    console.error('保存报错详情:', error)
+    alert('保存失败：' + (error.message || '未知错误'))
   }
 }
 </script>
