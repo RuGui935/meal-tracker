@@ -2,17 +2,27 @@
   <div class="settings-page">
     <h2 class="page-title">设置</h2>
 
-    <!-- 外观设置 -->
+    <!-- 全局 UI 风格切换 -->
     <div class="card">
-      <h3>外观模式</h3>
+      <h3>全局界面风格</h3>
       <div class="theme-options">
-        <button :class="{ active: !isDark }" @click="setDark(false)">🌞 日间模式</button>
-        <button :class="{ active: isDark }" @click="setDark(true)">🌙 夜间模式</button>
+        <button :class="{ active: currentUI === 'default' }" @click="changeUI('default')">
+          ☀️ 极简白
+        </button>
+        <button :class="{ active: currentUI === 'dark' }" @click="changeUI('dark')">
+          🌙 暗夜黑
+        </button>
+        <button :class="{ active: currentUI === 'morandi' }" @click="changeUI('morandi')">
+          🍂 莫兰迪
+        </button>
+        <button :class="{ active: currentUI === 'cyber' }" @click="changeUI('cyber')">
+          👾 赛博夜
+        </button>
       </div>
     </div>
 
     <div class="card">
-      <h3>卡片颜色 (主页顶部)</h3>
+      <h3>顶部卡片颜色 (主页)</h3>
       <div class="color-options">
         <div
           v-for="(t, i) in themes"
@@ -41,7 +51,7 @@
       </div>
     </div>
 
-    <!-- 导入弹窗 (跟之前一样) -->
+    <!-- 导入弹窗 -->
     <div v-if="importModal.show" class="modal-overlay">
       <div class="modal-content import-modal">
         <button class="close-btn" @click="cancelImport">✕</button>
@@ -58,10 +68,9 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, toRaw } from 'vue'
 import { db } from '../db/index'
 
-// 主题配置 (跟 ListView 里保持一致)
 const themes = [
   { name: '极光幻境', bg: 'linear-gradient(135deg, #0a192f 0%, #00b4db 60%, #a8ff78 100%)' },
   { name: '深海霓虹', bg: 'linear-gradient(135deg, #000428 0%, #004e92 60%, #00d2ff 100%)' },
@@ -69,16 +78,14 @@ const themes = [
   { name: '赛博日落', bg: 'linear-gradient(135deg, #2b1055 0%, #7597de 50%, #ff7e5f 100%)' },
 ]
 
-const isDark = ref(localStorage.getItem('theme') === 'dark')
 const currentThemeIndex = ref(Number(localStorage.getItem('cardTheme')) || 0)
+const currentUI = ref(localStorage.getItem('ui_theme') || 'default')
 
-// 修改主题需要触发全局更新，我们用 localStorage 配合事件的简单方式
-const setDark = (val) => {
-  isDark.value = val
-  localStorage.setItem('theme', val ? 'dark' : 'light')
-  // 直接修改根节点的 class 触发全局颜色变化
-  if (val) document.documentElement.classList.add('dark-mode')
-  else document.documentElement.classList.remove('dark-mode')
+// 切换 UI 风格
+const changeUI = (uiName) => {
+  currentUI.value = uiName
+  localStorage.setItem('ui_theme', uiName)
+  document.documentElement.setAttribute('data-theme', uiName)
 }
 
 const setCardTheme = (index) => {
@@ -86,7 +93,7 @@ const setCardTheme = (index) => {
   localStorage.setItem('cardTheme', index)
 }
 
-// 导出功能
+// 导出
 const downloadFile = (content, filename, type) => {
   const blob = new Blob([content], { type })
   const url = URL.createObjectURL(blob)
@@ -186,6 +193,11 @@ const doImport = async (isAppend) => {
   const data = importModal.value.data
   if (!data) return
   try {
+    const rawData = toRaw(data)
+    const mealsData = rawData.meals
+    const extrasData = rawData.extras
+    const ingredientsData = rawData.ingredients
+
     await db.transaction('rw', db.meals, db.extras, db.ingredients, async () => {
       if (!isAppend) {
         await db.meals.clear()
@@ -196,19 +208,19 @@ const doImport = async (isAppend) => {
       let existExtras = isAppend ? await db.extras.toArray() : []
       let existIngredients = isAppend ? await db.ingredients.toArray() : []
 
-      for (const m of data.meals) {
+      for (const m of mealsData) {
         if (isAppend) {
           const isDup = existMeals.some(
             (e) =>
               e.date === m.date && e.type === m.type && e.amount === m.amount && e.note === m.note,
           )
           if (!isDup) {
-            await db.meals.add(m)
+            await db.meals.add({ ...m })
             existMeals.push(m)
           }
-        } else await db.meals.add(m)
+        } else await db.meals.add({ ...m })
       }
-      for (const ex of data.extras) {
+      for (const ex of extrasData) {
         if (isAppend) {
           const isDup = existExtras.some(
             (e) =>
@@ -218,24 +230,25 @@ const doImport = async (isAppend) => {
               e.note === ex.note,
           )
           if (!isDup) {
-            await db.extras.add(ex)
+            await db.extras.add({ ...ex })
             existExtras.push(ex)
           }
-        } else await db.extras.add(ex)
+        } else await db.extras.add({ ...ex })
       }
-      for (const ing of data.ingredients) {
+      for (const ing of ingredientsData) {
         if (isAppend) {
           const isDup = existIngredients.some((e) => e.date === ing.date && e.note === ing.note)
           if (!isDup) {
-            await db.ingredients.add(ing)
+            await db.ingredients.add({ ...ing })
             existIngredients.push(ing)
           }
-        } else await db.ingredients.add(ing)
+        } else await db.ingredients.add({ ...ing })
       }
     })
     alert(isAppend ? '追加导入成功！' : '覆盖导入成功！')
     cancelImport()
   } catch (err) {
+    console.error(err)
     alert('导入失败：' + (err.message || '未知错误'))
   }
 }
@@ -252,26 +265,28 @@ const doImport = async (isAppend) => {
 }
 .card {
   background: var(--card-bg);
-  border-radius: 12px;
+  border-radius: var(--radius);
   padding: 20px;
   margin-bottom: 15px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--border-color);
+  transition: all 0.3s;
 }
 .card h3 {
   margin-top: 0;
   font-size: 16px;
   color: var(--text-color);
   margin-bottom: 15px;
-  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 10px;
 }
 
 .theme-options {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
 .theme-options button {
-  flex: 1;
   padding: 12px;
   border-radius: 8px;
   border: 2px solid transparent;
@@ -282,9 +297,9 @@ const doImport = async (isAppend) => {
   transition: all 0.2s;
 }
 .theme-options button.active {
-  border-color: #ff5722;
+  border-color: var(--primary);
   background: rgba(255, 87, 34, 0.1);
-  color: #ff5722;
+  color: var(--primary);
 }
 
 .color-options {
@@ -301,7 +316,7 @@ const doImport = async (isAppend) => {
   transition: transform 0.2s;
 }
 .color-dot.active {
-  border-color: #fff;
+  border-color: var(--text-color);
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
   transform: scale(1.1);
 }
@@ -344,7 +359,7 @@ const doImport = async (isAppend) => {
   color: white;
 }
 
-/* 弹窗 */
+/* 弹窗样式 */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -362,9 +377,10 @@ const doImport = async (isAppend) => {
   background: var(--card-bg);
   width: 100%;
   max-width: 320px;
-  border-radius: 16px;
+  border-radius: var(--radius);
   padding: 20px;
   position: relative;
+  box-shadow: var(--card-shadow);
 }
 .import-modal h3 {
   margin-top: 0;

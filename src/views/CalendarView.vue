@@ -20,14 +20,13 @@
           class="day-cell"
           :class="{
             today: isToday(day),
-            'has-record': hasRecord(day) /* 👈 只要有三餐/额外就打勾 */,
+            'has-record': hasRecord(day),
             selected: selectedDay === day,
           }"
           @click="selectDay(day)"
         >
           <span class="day-num">{{ day }}</span>
 
-          <!-- 图标展示逻辑 -->
           <span v-if="getDayStatus(day) === 'fire'" class="mark-icon fire">🔥</span>
           <span v-else-if="getDayStatus(day) === 'leaf'" class="mark-icon leaf">🍃</span>
           <span v-else-if="hasRecord(day)" class="mark-icon check">✓</span>
@@ -41,7 +40,6 @@
       <span class="legend-item"><span class="icon">🍃</span> 花费≤10 (不含0元)</span>
     </div>
 
-    <!-- 选中日期后的数据展示 -->
     <div v-if="selectedDay" class="day-detail-card">
       <div class="detail-header">
         <h3>{{ currentMonth }}月{{ selectedDay }}日 记录</h3>
@@ -52,7 +50,6 @@
 
       <div v-for="item in selectedDayData" :key="item.id" class="detail-item">
         <span class="detail-tag" :class="item.typeClass">{{ item.typeName }}</span>
-        <!-- 👇 这里改成把标签和备注拼起来显示 -->
         <span class="detail-note">{{ item.note }}</span>
         <span class="detail-amount">¥{{ item.amount }}</span>
       </div>
@@ -87,7 +84,6 @@ const firstDayOffset = computed(() => {
 
 const daysInMonth = computed(() => new Date(currentYear.value, currentMonth.value, 0).getDate())
 
-// 总金额字典（用来显示在选中列表的顶部）
 const dailyTotals = ref({})
 
 const loadData = async () => {
@@ -101,7 +97,6 @@ const loadData = async () => {
     totals[d] = (totals[d] || 0) + amount
   }
 
-  // 总额算上食材（只在点开某天看的时候显示）
   rawMeals.value.forEach((m) => add(m.date, m.amount))
   rawExtras.value.forEach((e) => add(e.date, e.amount))
   rawIngredients.value.forEach((i) => {
@@ -147,7 +142,6 @@ const selectDay = (day) => {
   selectedDay.value = selectedDay.value === day ? null : day
 }
 
-// 👇 1. 判断这天是否有打勾资格（只看三餐和额外，不看食材）
 const hasRecord = (day) => {
   const dateStr = `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}-${String(day).padStart(2, '0')}`
   const hasMeal = rawMeals.value.some((m) => m.date === dateStr)
@@ -155,7 +149,6 @@ const hasRecord = (day) => {
   return hasMeal || hasExtra
 }
 
-// 👇 2. 计算火/叶状态（只算三餐和额外的真金白银，0元不参与）
 const getDayStatus = (day) => {
   const dateStr = `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 
@@ -172,11 +165,10 @@ const getDayStatus = (day) => {
     })
 
   if (realMoneySpent > 50) return 'fire'
-  if (realMoneySpent > 0 && realMoneySpent <= 10) return 'leaf' // 👈 必须 > 0
+  if (realMoneySpent > 0 && realMoneySpent <= 10) return 'leaf'
   return 'normal'
 }
 
-// 生成选中日期的数据列表（包含食材）
 const selectedDayData = computed(() => {
   if (!selectedDay.value) return []
   const dateStr = `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}-${String(selectedDay.value).padStart(2, '0')}`
@@ -185,7 +177,6 @@ const selectedDayData = computed(() => {
   rawMeals.value
     .filter((m) => m.date === dateStr)
     .forEach((m) => {
-      // 三餐：如果有标签带上标签，加上备注
       const noteText = m.tag ? `【${m.tag}】${m.note || ''}` : m.note || '无备注'
       list.push({
         id: 'm' + m.id,
@@ -199,7 +190,6 @@ const selectedDayData = computed(() => {
   rawExtras.value
     .filter((e) => e.date === dateStr)
     .forEach((e) => {
-      // 额外：如果有标签带上标签，加上备注
       const noteText = e.tag ? `【${e.tag}】${e.note || ''}` : e.note || '无备注'
       list.push({
         id: 'e' + e.id,
@@ -220,7 +210,7 @@ const selectedDayData = computed(() => {
         typeName: '食材',
         typeClass: 'ing',
         note: i.items.map((item) => item.name).join('、'),
-        amount: total,
+        amount: Number(total.toFixed(2)),
       })
     })
 
@@ -238,9 +228,11 @@ const selectedDayData = computed(() => {
   align-items: center;
   padding: 15px;
   background: var(--card-bg);
-  border-radius: 8px;
+  border-radius: var(--radius);
   margin-bottom: 15px;
-  transition: background 0.3s;
+  transition: all 0.3s;
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--border-color);
 }
 .arrow-btn {
   font-size: 24px;
@@ -257,10 +249,11 @@ const selectedDayData = computed(() => {
 }
 .calendar-container {
   background: var(--card-bg);
-  border-radius: 12px;
+  border-radius: var(--radius);
   padding: 15px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  transition: background 0.3s;
+  box-shadow: var(--card-shadow);
+  transition: all 0.3s;
+  border: 1px solid var(--border-color);
 }
 .weekdays {
   display: grid;
@@ -291,17 +284,17 @@ const selectedDayData = computed(() => {
   background: transparent;
 }
 .day-cell.today {
-  border: 2px solid #ff5722;
+  border: 2px solid var(--primary);
   font-weight: bold;
-  color: #ff5722;
+  color: var(--primary);
 }
 .day-cell.has-record {
   background: rgba(255, 87, 34, 0.1);
-  color: #ff5722;
+  color: var(--primary);
 }
 .day-cell.selected {
-  border: 2px solid #ff9800;
-  background: rgba(255, 152, 0, 0.2);
+  border: 2px solid var(--primary);
+  background: rgba(255, 87, 34, 0.2);
   font-weight: bold;
 }
 
@@ -312,7 +305,7 @@ const selectedDayData = computed(() => {
   font-size: 12px;
 }
 .mark-icon.check {
-  color: #ff5722;
+  color: var(--primary);
   font-weight: bold;
   font-size: 10px;
 }
@@ -333,9 +326,10 @@ const selectedDayData = computed(() => {
 .day-detail-card {
   margin-top: 15px;
   background: var(--card-bg);
-  border-radius: 12px;
+  border-radius: var(--radius);
   padding: 15px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--border-color);
   animation: fadeIn 0.3s;
 }
 @keyframes fadeIn {
@@ -352,7 +346,7 @@ const selectedDayData = computed(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px dashed rgba(128, 128, 128, 0.2);
+  border-bottom: 1px dashed var(--border-color);
   padding-bottom: 10px;
   margin-bottom: 10px;
 }
@@ -363,7 +357,7 @@ const selectedDayData = computed(() => {
 }
 .detail-total {
   font-weight: bold;
-  color: #ff5722;
+  color: var(--primary);
 }
 .empty-tip {
   text-align: center;
@@ -376,7 +370,7 @@ const selectedDayData = computed(() => {
   align-items: center;
   padding: 8px 0;
   font-size: 14px;
-  border-bottom: 1px dashed rgba(128, 128, 128, 0.1);
+  border-bottom: 1px dashed var(--border-color);
 }
 .detail-item:last-child {
   border-bottom: none;

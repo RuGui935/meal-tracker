@@ -125,7 +125,6 @@
               ><input type="number" v-model="formData.amount" placeholder="0.00" />
             </div>
 
-            <!-- 👇 新的三餐标签滑动行 -->
             <div class="form-row">
               <label>标签</label>
               <div class="tag-scroll-container">
@@ -184,7 +183,6 @@
               ><input type="number" v-model="formData.amount" placeholder="0.00" />
             </div>
 
-            <!-- 👇 新的额外标签滑动行 -->
             <div class="form-row">
               <label>牌子/标签</label>
               <div class="tag-scroll-container">
@@ -255,7 +253,6 @@ import confetti from 'canvas-confetti'
 
 const route = useRoute()
 
-// ================= 主题配置 =================
 const themes = [
   { name: '极光幻境', bg: 'linear-gradient(135deg, #0a192f 0%, #00b4db 60%, #a8ff78 100%)' },
   { name: '深海霓虹', bg: 'linear-gradient(135deg, #000428 0%, #004e92 60%, #00d2ff 100%)' },
@@ -265,7 +262,6 @@ const themes = [
 const currentThemeIndex = ref(Number(localStorage.getItem('cardTheme')) || 0)
 const currentTheme = computed(() => themes[currentThemeIndex.value])
 
-// ================= 核心数据 =================
 const currentDate = new Date()
 const currentYear = ref(currentDate.getFullYear())
 const currentMonth = ref(currentDate.getMonth() + 1)
@@ -276,7 +272,6 @@ const monthTotal = ref(0)
 const ingredientTotal = ref(0)
 const expandedDates = ref([])
 
-// 排序记住状态
 const isDesc = ref(localStorage.getItem('listSortOrder') !== 'asc')
 const toggleSort = () => {
   isDesc.value = !isDesc.value
@@ -386,7 +381,6 @@ const deleteRecord = async (type, id) => {
   loadData()
 }
 
-// 滚动隐藏
 const isScrollingDown = ref(false)
 let lastScrollTop = 0
 const handleScroll = () => {
@@ -398,7 +392,6 @@ const handleScroll = () => {
 onMounted(() => window.addEventListener('scroll', handleScroll))
 onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 
-// 表单
 const showForm = ref(false)
 const formType = ref('meal')
 const editingId = ref(null)
@@ -531,11 +524,11 @@ const handleSave = async () => {
 }
 .summary-card {
   margin: 0 15px 15px;
-  border-radius: 16px;
+  border-radius: var(--radius);
   padding: 25px 20px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--card-shadow);
   color: #fff;
   transition: background 0.5s ease;
 }
@@ -580,7 +573,7 @@ const handleSave = async () => {
   font-weight: bold;
   z-index: 10000;
   animation: dropDown 0.3s ease-out;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--card-shadow);
 }
 @keyframes dropDown {
   from {
@@ -595,9 +588,10 @@ const handleSave = async () => {
 .ingredient-section {
   margin: 0 15px 15px;
   background: var(--card-bg);
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border-radius: var(--radius);
+  box-shadow: var(--card-shadow);
   overflow: hidden;
+  border: 1px solid var(--border-color);
 }
 .ingredient-header {
   display: flex;
@@ -606,7 +600,7 @@ const handleSave = async () => {
   padding: 15px;
   cursor: pointer;
   background: rgba(128, 128, 128, 0.05);
-  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+  border-bottom: 1px solid var(--border-color);
 }
 .ing-title {
   font-size: 15px;
@@ -626,7 +620,7 @@ const handleSave = async () => {
   display: flex;
   align-items: flex-start;
   padding: 8px 0;
-  border-bottom: 1px dashed rgba(128, 128, 128, 0.2);
+  border-bottom: 1px dashed var(--border-color);
   font-size: 13px;
 }
 .ing-record:last-child {
@@ -660,11 +654,11 @@ const handleSave = async () => {
 }
 .sort-btn {
   background: var(--card-bg);
-  border: 1px solid rgba(128, 128, 128, 0.2);
+  border: 1px solid var(--border-color);
   padding: 4px 10px;
   border-radius: 15px;
   font-size: 12px;
-  color: #ff5722;
+  color: var(--primary);
   cursor: pointer;
   outline: none;
 }
@@ -679,10 +673,11 @@ const handleSave = async () => {
 }
 .day-group {
   background: var(--card-bg);
-  border-radius: 12px;
+  border-radius: var(--radius);
   margin-bottom: 10px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--border-color);
 }
 .day-header {
   display: flex;
@@ -719,14 +714,14 @@ const handleSave = async () => {
 .day-details {
   padding: 5px 15px 15px;
   background: rgba(128, 128, 128, 0.03);
-  border-top: 1px solid rgba(128, 128, 128, 0.1);
+  border-top: 1px solid var(--border-color);
 }
 .record-item {
   display: flex;
   align-items: center;
   padding: 10px 0;
   font-size: 14px;
-  border-bottom: 1px dashed rgba(128, 128, 128, 0.2);
+  border-bottom: 1px dashed var(--border-color);
 }
 .record-item:last-child {
   border-bottom: none;
@@ -779,11 +774,11 @@ const handleSave = async () => {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: #ff5722;
+  background: var(--primary);
   color: white;
   font-size: 32px;
   border: none;
-  box-shadow: 0 4px 10px rgba(255, 87, 34, 0.4);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -818,12 +813,13 @@ const handleSave = async () => {
   background: var(--card-bg);
   width: 100%;
   max-width: 400px;
-  border-radius: 16px;
+  border-radius: var(--radius);
   padding: 20px;
   box-sizing: border-box;
   max-height: 85vh;
   overflow-y: auto;
   animation: scaleIn 0.3s ease-out;
+  border: 1px solid var(--border-color);
 }
 @keyframes scaleIn {
   from {
@@ -860,7 +856,7 @@ const handleSave = async () => {
 }
 .type-tabs button.active {
   background: var(--card-bg);
-  color: #ff5722;
+  color: var(--primary);
   font-weight: bold;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
@@ -879,7 +875,7 @@ const handleSave = async () => {
 .form-row > select {
   flex: 1;
   padding: 10px;
-  border: 1px solid rgba(128, 128, 128, 0.2);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   font-size: 16px;
   outline: none;
@@ -888,11 +884,11 @@ const handleSave = async () => {
 }
 .form-row > input:focus,
 .form-row > select:focus {
-  border-color: #ff5722;
+  border-color: var(--primary);
   background: var(--card-bg);
 }
 .ing-inputs {
-  border: 1px dashed rgba(128, 128, 128, 0.3);
+  border: 1px dashed var(--border-color);
   padding: 10px;
   border-radius: 8px;
   margin-bottom: 15px;
@@ -906,7 +902,7 @@ const handleSave = async () => {
 .del-btn {
   background: none;
   border: none;
-  color: #ff5722;
+  color: var(--primary);
   font-size: 20px;
   padding: 0 10px;
   cursor: pointer;
@@ -914,9 +910,9 @@ const handleSave = async () => {
 .add-ing-btn {
   width: 100%;
   padding: 8px;
-  border: 1px dashed #ff5722;
+  border: 1px dashed var(--primary);
   background: rgba(255, 87, 34, 0.05);
-  color: #ff5722;
+  color: var(--primary);
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
@@ -939,12 +935,11 @@ const handleSave = async () => {
   color: var(--sub-text);
 }
 .save-btn {
-  background: #ff5722;
+  background: var(--primary);
   color: white;
   font-weight: bold;
 }
 
-/* 👇 单行横滑标签样式 */
 .tag-scroll-container {
   flex: 1;
   display: flex;
@@ -971,15 +966,15 @@ const handleSave = async () => {
 }
 .quick-tag.active {
   background: rgba(255, 87, 34, 0.15);
-  color: #ff5722;
-  border-color: #ff5722;
+  color: var(--primary);
+  border-color: var(--primary);
   font-weight: bold;
 }
 .inline-tag-input {
   width: 80px;
   flex-shrink: 0;
   padding: 6px;
-  border: 1px solid rgba(128, 128, 128, 0.2);
+  border: 1px solid var(--border-color);
   border-radius: 20px;
   font-size: 13px;
   background: transparent;

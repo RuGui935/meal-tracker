@@ -6,13 +6,11 @@
       <button class="arrow-btn" @click="changeYear(1)">›</button>
     </header>
 
-    <!-- 本年总花费 -->
     <div class="card total-card">
       <div class="total-label">本年总花费</div>
       <div class="total-value">¥{{ yearTotal.toFixed(2) }}</div>
     </div>
 
-    <!-- 月度分布 (点击切换月份) -->
     <div class="card">
       <h3>月度分布</h3>
       <div class="monthly-bars">
@@ -32,7 +30,6 @@
       </div>
     </div>
 
-    <!-- 选中月份的分类明细 -->
     <div class="card">
       <h3>分类明细 ({{ selectedMonth }}月)</h3>
       <div v-if="monthStats" class="category-list">
@@ -75,29 +72,20 @@ const monthlyData = ref([])
 const yearTotal = ref(0)
 const monthStats = ref(null)
 
-// 加载整年数据
 const loadYearData = async () => {
   monthlyData.value = await statsRepo.getYearMonthlyTotals(currentYear.value)
   yearTotal.value = monthlyData.value.reduce((sum, m) => sum + m.total, 0)
-
-  // 初始加载时，加载默认选中的月份明细
   await loadMonthDetails()
 }
 
-// 加载单个月份的明细
 const loadMonthDetails = async () => {
   const mStr = String(selectedMonth.value).padStart(2, '0')
   monthStats.value = await statsRepo.getMonthStats(`${currentYear.value}-${mStr}`)
 }
 
 onMounted(loadYearData)
+watch(currentYear, loadYearData)
 
-// 切换年份时，重新加载全年数据和明细
-watch(currentYear, async () => {
-  await loadYearData()
-})
-
-// 点击哪个月，就更新选中状态并重新查该月数据
 const selectMonth = async (month) => {
   selectedMonth.value = month
   await loadMonthDetails()
@@ -124,9 +112,11 @@ const getBarWidth = (amount) => {
   align-items: center;
   padding: 15px;
   background: var(--card-bg);
-  border-radius: 8px;
+  border-radius: var(--radius);
   margin-bottom: 15px;
-  transition: background 0.3s;
+  transition: all 0.3s;
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--border-color);
 }
 .arrow-btn {
   font-size: 24px;
@@ -144,18 +134,19 @@ const getBarWidth = (amount) => {
 
 .card {
   background: var(--card-bg);
-  border-radius: 12px;
+  border-radius: var(--radius);
   padding: 20px;
   margin-bottom: 15px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  transition: background 0.3s;
+  box-shadow: var(--card-shadow);
+  transition: all 0.3s;
+  border: 1px solid var(--border-color);
 }
 .card h3 {
   margin-top: 0;
   font-size: 16px;
   color: var(--text-color);
   margin-bottom: 15px;
-  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 10px;
 }
 
@@ -170,7 +161,7 @@ const getBarWidth = (amount) => {
 .total-value {
   font-size: 32px;
   font-weight: bold;
-  color: #ff5722;
+  color: var(--primary);
 }
 
 .monthly-bars {
@@ -193,7 +184,7 @@ const getBarWidth = (amount) => {
 }
 .bar-row.active .m-label,
 .bar-row.active .m-val {
-  color: #ff9800;
+  color: var(--primary);
   font-weight: bold;
 }
 .m-label {
@@ -210,7 +201,7 @@ const getBarWidth = (amount) => {
 }
 .bar-fill {
   height: 100%;
-  background: #ff9800;
+  background: var(--primary);
   border-radius: 6px;
   transition: width 0.5s ease;
 }
@@ -231,7 +222,7 @@ const getBarWidth = (amount) => {
   justify-content: space-between;
   font-size: 14px;
   color: var(--text-color);
-  border-bottom: 1px dashed rgba(128, 128, 128, 0.2);
+  border-bottom: 1px dashed var(--border-color);
   padding-bottom: 8px;
 }
 .cat-item:last-child {
