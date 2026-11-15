@@ -279,8 +279,8 @@ const themes = [
   {
     name: '霓虹',
     bg: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)',
-    textColor: '#00ffff',
-  }, // 适配赛博，青色发光字
+    textColor: '#7aa2f7',
+  },
 ]
 const currentThemeIndex = ref(Number(localStorage.getItem('cardTheme')) || 0)
 const currentTheme = computed(() => themes[currentThemeIndex.value])
