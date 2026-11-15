@@ -6,13 +6,16 @@
       <button class="arrow-btn" @click="changeMonth(1)">›</button>
     </header>
 
-    <!-- 渐变卡片 -->
-    <div class="summary-card" :style="{ background: currentTheme.bg }">
-      <div class="card-content">
+    <!-- 渐变卡片 (动态读取主题布局) -->
+    <div
+      class="summary-card"
+      :style="{ background: currentTheme.bg, color: currentTheme.textColor || '#fff' }"
+    >
+      <div class="card-content" :class="`layout-${currentUI}`">
         <div class="card-label">本月总花费</div>
         <div class="card-amount"><span class="currency">¥</span>{{ monthTotal.toFixed(2) }}</div>
       </div>
-      <div class="card-bg-deco"></div>
+      <div class="card-bg-deco" v-if="currentUI !== 'morandi' && currentUI !== 'cyber'"></div>
     </div>
 
     <div v-if="achievementMsg" class="achievement-toast">🏆 成就达成：{{ achievementMsg }}</div>
@@ -253,12 +256,31 @@ import confetti from 'canvas-confetti'
 import { db } from '../db/index' // 👈 加上这一行
 
 const route = useRoute()
-
+const currentUI = ref(localStorage.getItem('ui_theme') || 'default')
+// 监听设置页的主题变化
+window.addEventListener('storage', (e) => {
+  if (e.key === 'ui_theme') currentUI.value = e.newValue
+})
 const themes = [
-  { name: '极光幻境', bg: 'linear-gradient(135deg, #0a192f 0%, #00b4db 60%, #a8ff78 100%)' },
-  { name: '深海霓虹', bg: 'linear-gradient(135deg, #000428 0%, #004e92 60%, #00d2ff 100%)' },
-  { name: '樱花晚霞', bg: 'linear-gradient(135deg, #d4145a 0%, #fbb03b 100%)' },
-  { name: '赛博日落', bg: 'linear-gradient(135deg, #2b1055 0%, #7597de 50%, #ff7e5f 100%)' },
+  { name: '纯白', bg: '#ffffff', textColor: '#333333' }, // 新增：适配极简白
+  { name: '深空', bg: '#1c1c1e', textColor: '#ffffff' }, // 新增：适配暗夜黑
+  {
+    name: '极光',
+    bg: 'linear-gradient(135deg, #0a192f 0%, #00b4db 60%, #a8ff78 100%)',
+    textColor: '#ffffff',
+  },
+  {
+    name: '深海',
+    bg: 'linear-gradient(135deg, #000428 0%, #004e92 60%, #00d2ff 100%)',
+    textColor: '#ffffff',
+  },
+  { name: '樱花', bg: 'linear-gradient(135deg, #d4145a 0%, #fbb03b 100%)', textColor: '#ffffff' },
+  { name: '咖啡', bg: 'linear-gradient(135deg, #e6d5c3 0%, #b08d6a 100%)', textColor: '#4a3b32' }, // 适配莫兰迪的咖啡色，深色字
+  {
+    name: '霓虹',
+    bg: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)',
+    textColor: '#00ffff',
+  }, // 适配赛博，青色发光字
 ]
 const currentThemeIndex = ref(Number(localStorage.getItem('cardTheme')) || 0)
 const currentTheme = computed(() => themes[currentThemeIndex.value])
@@ -464,8 +486,6 @@ const handleSave = async () => {
       if (formData.value.amount === '' || formData.value.amount === null) return alert('请输入金额')
 
       const rawData = toRaw(formData.value)
-
-      // 👇 构造绝对干净的数据对象
       const data = {
         date: String(rawData.date),
         type: String(rawData.type),
@@ -475,15 +495,15 @@ const handleSave = async () => {
         images: rawData.images || [],
       }
 
-      // 👇 核心修复：如果有 editingId，把 id 带上，用 put 直接覆盖！
       if (editingId.value) {
-        data.id = editingId.value // 必须带上主键
+        data.id = editingId.value
         if (formType.value === 'meal') await db.meals.put(data)
         else await db.extras.put(data)
       } else {
-        // 新增
         if (formType.value === 'meal') await mealRepo.addMeal(data)
         else await extraRepo.addExtra(data)
+
+        // 撒花特效
         triggerCelebration(data.amount, formType.value)
       }
     } else {
@@ -511,6 +531,46 @@ const handleSave = async () => {
       }
     }
 
+    // ==========================================
+    // 👇 核心在这里：数据存成功了，现在判断成就
+    // ==========================================
+    const checkAchievements = () => {
+      // 从本地存储拿出已解锁的成就，如果没有就是空数组
+      let unlocked = JSON.parse(localStorage.getItem('unlocked_achievements') || '[]')
+      let changed = false
+
+      // 成就1：第一次记账
+      if (!unlocked.includes('first_record')) {
+        unlocked.push('first_record')
+        changed = true
+      }
+
+      // 成就2：自给自足（记录食材）
+      if (formType.value === 'ingredient' && !unlocked.includes('ingredient_cook')) {
+        unlocked.push('ingredient_cook')
+        changed = true
+      }
+
+      // 成就3：奶茶续命（记录奶茶额外）
+      if (
+        formType.value === 'extra' &&
+        formData.value.type === 'milkTea' &&
+        !unlocked.includes('milk_tea_5')
+      ) {
+        unlocked.push('milk_tea_5')
+        changed = true
+      }
+
+      // 如果有新解锁的，存回本地
+      if (changed) {
+        localStorage.setItem('unlocked_achievements', JSON.stringify(unlocked))
+      }
+    }
+
+    // 执行检查
+    checkAchievements()
+
+    // 关闭弹窗，重置表单，刷新数据
     showForm.value = false
     editingId.value = null
     formData.value = initFormData()
@@ -1005,5 +1065,71 @@ const handleSave = async () => {
   background: transparent;
   color: var(--text-color);
   outline: none;
+}
+/* 已有的卡片基础样式 */
+.summary-card {
+  margin: 0 15px 15px;
+  border-radius: var(--radius);
+  padding: 25px 20px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--card-shadow);
+  transition: all 0.5s ease;
+  border: 1px solid rgba(128, 128, 128, 0.15); /* 👈 加这一行，防止纯白卡片隐身 */
+}
+.card-content {
+  position: relative;
+  z-index: 2;
+  transition: all 0.3s;
+}
+.card-label {
+  font-size: 14px;
+  opacity: 0.8;
+  margin-bottom: 5px;
+}
+.card-amount {
+  font-size: 38px;
+  font-weight: bold;
+  font-family: -apple-system, sans-serif;
+}
+.currency {
+  font-size: 22px;
+  margin-right: 4px;
+}
+
+/* 👇 新增：主题专属布局 */
+/* 1. 默认/极简白/暗夜黑：左对齐 */
+.layout-default,
+.layout-dark {
+  text-align: left;
+}
+
+/* 2. 莫兰迪：居中排版，增加行高，字重变细，极具呼吸感 */
+.layout-morandi {
+  text-align: center;
+}
+.layout-morandi .card-label {
+  letter-spacing: 2px;
+  font-size: 13px;
+  opacity: 0.6;
+  margin-bottom: 10px;
+}
+.layout-morandi .card-amount {
+  font-family: 'Georgia', serif;
+  font-weight: 500;
+  font-size: 42px;
+} /* 换个优雅的衬线字体 */
+/* 3. 赛博夜：大写字母，等宽字体，右对齐，冷酷纯净无发光 */
+.layout-cyber {
+  text-align: right;
+  font-family: monospace;
+}
+.layout-cyber .card-label {
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  font-size: 12px;
+}
+.layout-cyber .card-amount {
+  /* 已经去掉了 text-shadow */
 }
 </style>

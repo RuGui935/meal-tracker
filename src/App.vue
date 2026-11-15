@@ -4,6 +4,7 @@
       <router-view />
     </main>
 
+    <!-- 找到原来的 <nav> 替换为： -->
     <nav class="bottom-tabs">
       <router-link to="/" class="tab-item"
         ><span class="icon">📝</span><span>列表</span></router-link
@@ -13,6 +14,9 @@
       >
       <router-link to="/stats" class="tab-item"
         ><span class="icon">📊</span><span>统计</span></router-link
+      >
+      <router-link to="/achievements" class="tab-item"
+        ><span class="icon">🏆</span><span>成就</span></router-link
       >
       <router-link to="/settings" class="tab-item"
         ><span class="icon">⚙️</span><span>设置</span></router-link

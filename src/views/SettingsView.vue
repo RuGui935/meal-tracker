@@ -21,17 +21,18 @@
       </div>
     </div>
 
+    <!-- 卡片颜色 -->
     <div class="card">
       <h3>顶部卡片颜色 (主页)</h3>
       <div class="color-options">
-        <div
-          v-for="(t, i) in themes"
-          :key="i"
-          class="color-dot"
-          :style="{ background: t.bg }"
-          :class="{ active: currentThemeIndex === i }"
-          @click="setCardTheme(i)"
-        ></div>
+        <div v-for="(t, i) in themes" :key="i" class="color-dot-wrapper" @click="setCardTheme(i)">
+          <!-- 👇 强制纯圆形，去除一切方形阴影 -->
+          <div
+            class="color-dot"
+            :style="{ background: t.bg }"
+            :class="{ active: currentThemeIndex === i }"
+          ></div>
+        </div>
       </div>
     </div>
 
@@ -71,17 +72,20 @@
 import { ref, toRaw } from 'vue'
 import { db } from '../db/index'
 
+// 👇 全新的 4 种适配主题的高级渐变
 const themes = [
-  { name: '极光幻境', bg: 'linear-gradient(135deg, #0a192f 0%, #00b4db 60%, #a8ff78 100%)' },
-  { name: '深海霓虹', bg: 'linear-gradient(135deg, #000428 0%, #004e92 60%, #00d2ff 100%)' },
-  { name: '樱花晚霞', bg: 'linear-gradient(135deg, #d4145a 0%, #fbb03b 100%)' },
-  { name: '赛博日落', bg: 'linear-gradient(135deg, #2b1055 0%, #7597de 50%, #ff7e5f 100%)' },
+  { name: '纯白', bg: '#ffffff', textColor: '#333333' }, // 新增：适配极简白
+  { name: '深空', bg: '#1c1c1e', textColor: '#ffffff' }, // 新增：适配暗夜黑
+  { name: '极光', bg: 'linear-gradient(135deg, #0a192f 0%, #00b4db 60%, #a8ff78 100%)' },
+  { name: '深海', bg: 'linear-gradient(135deg, #000428 0%, #004e92 60%, #00d2ff 100%)' },
+  { name: '樱花', bg: 'linear-gradient(135deg, #d4145a 0%, #fbb03b 100%)' },
+  { name: '咖啡', bg: 'linear-gradient(135deg, #e6d5c3 0%, #b08d6a 100%)' },
+  { name: '霓虹', bg: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)' },
 ]
 
 const currentThemeIndex = ref(Number(localStorage.getItem('cardTheme')) || 0)
 const currentUI = ref(localStorage.getItem('ui_theme') || 'default')
 
-// 切换 UI 风格
 const changeUI = (uiName) => {
   currentUI.value = uiName
   localStorage.setItem('ui_theme', uiName)
@@ -209,9 +213,7 @@ const doImport = async (isAppend) => {
       let existExtras = isAppend ? await db.extras.toArray() : []
       let existIngredients = isAppend ? await db.ingredients.toArray() : []
 
-      // 1. 三餐
       for (const m of mealsData) {
-        // 👇 核心修复：不要原来的 id，让数据库自己生成，剥离一切脏数据
         const cleanMeal = {
           date: String(m.date || ''),
           type: String(m.type || 'lunch'),
@@ -237,7 +239,6 @@ const doImport = async (isAppend) => {
         }
       }
 
-      // 2. 额外
       for (const ex of extrasData) {
         const cleanExtra = {
           date: String(ex.date || ''),
@@ -264,7 +265,6 @@ const doImport = async (isAppend) => {
         }
       }
 
-      // 3. 食材
       for (const ing of ingredientsData) {
         const cleanItems = (ing.items || []).map((item) => ({
           name: String(item.name || ''),
@@ -291,7 +291,7 @@ const doImport = async (isAppend) => {
     alert(isAppend ? '追加导入成功！' : '覆盖导入成功！')
     cancelImport()
   } catch (err) {
-    console.error('导入详细报错:', err)
+    console.error(err)
     alert('导入失败原因：\n' + (err.message || '未知错误'))
   }
 }
@@ -324,6 +324,7 @@ const doImport = async (isAppend) => {
   padding-bottom: 10px;
 }
 
+/* 主题风格按钮 */
 .theme-options {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -345,23 +346,34 @@ const doImport = async (isAppend) => {
   color: var(--primary);
 }
 
+/* 👇 核心修复：颜色球的容器 */
 .color-options {
   display: flex;
-  gap: 15px;
-  justify-content: space-between;
+  flex-wrap: wrap; /* 核心：放不下自动换行 */
+  gap: 12px;
+  padding: 5px 0;
+  justify-content: flex-start;
+}
+.color-dot-wrapper {
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 .color-dot {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  cursor: pointer;
-  border: 3px solid transparent;
-  transition: transform 0.2s;
+  width: 40px; /* 👇 稍微缩小一点尺寸 */
+  height: 40px;
+  border-radius: 50% !important;
+  border: none;
+  transition: all 0.2s ease;
 }
+/* 选中状态的外发光 */
 .color-dot.active {
-  border-color: var(--text-color);
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
-  transform: scale(1.1);
+  box-shadow:
+    0 0 0 3px var(--card-bg),
+    0 0 0 5px var(--primary);
+  transform: scale(1.05);
 }
 
 .tip {
@@ -471,5 +483,12 @@ const doImport = async (isAppend) => {
 .btn-cancel {
   background: rgba(128, 128, 128, 0.1);
   color: var(--sub-text);
+}
+
+/* 防止横向溢出，从根源解决页面乱跑问题 */
+.settings-page {
+  overflow-x: hidden;
+  width: 100%;
+  box-sizing: border-box;
 }
 </style>
