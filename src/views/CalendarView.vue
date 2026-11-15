@@ -62,8 +62,22 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { mealRepo, extraRepo, ingredientRepo } from '../services/mealRepo'
 
 const currentDate = new Date()
-const currentYear = ref(currentDate.getFullYear())
-const currentMonth = ref(currentDate.getMonth() + 1)
+// 月历页专属记忆：cal_year / cal_month
+const currentYear = ref(
+  localStorage.getItem('cal_year')
+    ? Number(localStorage.getItem('cal_year'))
+    : currentDate.getFullYear(),
+)
+const currentMonth = ref(
+  localStorage.getItem('cal_month')
+    ? Number(localStorage.getItem('cal_month'))
+    : currentDate.getMonth() + 1,
+)
+
+watch([currentYear, currentMonth], ([newY, newM]) => {
+  localStorage.setItem('cal_year', newY)
+  localStorage.setItem('cal_month', newM)
+})
 const selectedDay = ref(null)
 
 const rawMeals = ref([])

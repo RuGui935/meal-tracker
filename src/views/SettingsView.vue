@@ -177,7 +177,8 @@ const onFileSelect = (event) => {
       importModal.value.data = backupData.data
       importModal.value.show = true
     } catch (err) {
-      alert('解析失败')
+      console.error('解析文件出错:', err)
+      alert('解析失败：' + (err.message || '文件可能不是标准的 JSON 格式'))
     }
   }
   reader.readAsText(file)
@@ -194,9 +195,9 @@ const doImport = async (isAppend) => {
   if (!data) return
   try {
     const rawData = toRaw(data)
-    const mealsData = rawData.meals
-    const extrasData = rawData.extras
-    const ingredientsData = rawData.ingredients
+    const mealsData = rawData.meals || []
+    const extrasData = rawData.extras || []
+    const ingredientsData = rawData.ingredients || []
 
     await db.transaction('rw', db.meals, db.extras, db.ingredients, async () => {
       if (!isAppend) {
@@ -208,48 +209,90 @@ const doImport = async (isAppend) => {
       let existExtras = isAppend ? await db.extras.toArray() : []
       let existIngredients = isAppend ? await db.ingredients.toArray() : []
 
+      // 1. 三餐
       for (const m of mealsData) {
+        // 👇 核心修复：不要原来的 id，让数据库自己生成，剥离一切脏数据
+        const cleanMeal = {
+          date: String(m.date || ''),
+          type: String(m.type || 'lunch'),
+          amount: Number(m.amount) || 0,
+          tag: String(m.tag || ''),
+          note: String(m.note || ''),
+          images: Array.isArray(m.images) ? m.images : [],
+        }
         if (isAppend) {
           const isDup = existMeals.some(
             (e) =>
-              e.date === m.date && e.type === m.type && e.amount === m.amount && e.note === m.note,
+              e.date === cleanMeal.date &&
+              e.type === cleanMeal.type &&
+              e.amount === cleanMeal.amount &&
+              e.note === cleanMeal.note,
           )
           if (!isDup) {
-            await db.meals.add({ ...m })
-            existMeals.push(m)
+            await db.meals.add(cleanMeal)
+            existMeals.push(cleanMeal)
           }
-        } else await db.meals.add({ ...m })
+        } else {
+          await db.meals.add(cleanMeal)
+        }
       }
+
+      // 2. 额外
       for (const ex of extrasData) {
+        const cleanExtra = {
+          date: String(ex.date || ''),
+          type: String(ex.type || 'snack'),
+          amount: Number(ex.amount) || 0,
+          tag: String(ex.tag || ''),
+          note: String(ex.note || ''),
+          images: Array.isArray(ex.images) ? ex.images : [],
+        }
         if (isAppend) {
           const isDup = existExtras.some(
             (e) =>
-              e.date === ex.date &&
-              e.type === ex.type &&
-              e.amount === ex.amount &&
-              e.note === ex.note,
+              e.date === cleanExtra.date &&
+              e.type === cleanExtra.type &&
+              e.amount === cleanExtra.amount &&
+              e.note === cleanExtra.note,
           )
           if (!isDup) {
-            await db.extras.add({ ...ex })
-            existExtras.push(ex)
+            await db.extras.add(cleanExtra)
+            existExtras.push(cleanExtra)
           }
-        } else await db.extras.add({ ...ex })
+        } else {
+          await db.extras.add(cleanExtra)
+        }
       }
+
+      // 3. 食材
       for (const ing of ingredientsData) {
+        const cleanItems = (ing.items || []).map((item) => ({
+          name: String(item.name || ''),
+          amount: Number(item.amount) || 0,
+        }))
+        const cleanIng = {
+          date: String(ing.date || ''),
+          note: String(ing.note || ''),
+          items: cleanItems,
+        }
         if (isAppend) {
-          const isDup = existIngredients.some((e) => e.date === ing.date && e.note === ing.note)
+          const isDup = existIngredients.some(
+            (e) => e.date === cleanIng.date && e.note === cleanIng.note,
+          )
           if (!isDup) {
-            await db.ingredients.add({ ...ing })
-            existIngredients.push(ing)
+            await db.ingredients.add(cleanIng)
+            existIngredients.push(cleanIng)
           }
-        } else await db.ingredients.add({ ...ing })
+        } else {
+          await db.ingredients.add(cleanIng)
+        }
       }
     })
     alert(isAppend ? '追加导入成功！' : '覆盖导入成功！')
     cancelImport()
   } catch (err) {
-    console.error(err)
-    alert('导入失败：' + (err.message || '未知错误'))
+    console.error('导入详细报错:', err)
+    alert('导入失败原因：\n' + (err.message || '未知错误'))
   }
 }
 </script>

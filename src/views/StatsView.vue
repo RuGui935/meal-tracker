@@ -65,9 +65,22 @@ import { ref, onMounted, watch } from 'vue'
 import { statsRepo } from '../services/mealRepo'
 
 const currentDate = new Date()
-const currentYear = ref(currentDate.getFullYear())
-const selectedMonth = ref(currentDate.getMonth() + 1)
+// 统计页专属记忆：stats_year / stats_month
+const currentYear = ref(
+  localStorage.getItem('stats_year')
+    ? Number(localStorage.getItem('stats_year'))
+    : currentDate.getFullYear(),
+)
+const selectedMonth = ref(
+  localStorage.getItem('stats_month')
+    ? Number(localStorage.getItem('stats_month'))
+    : currentDate.getMonth() + 1,
+)
 
+watch([currentYear, selectedMonth], ([newY, newM]) => {
+  localStorage.setItem('stats_year', newY)
+  localStorage.setItem('stats_month', newM)
+})
 const monthlyData = ref([])
 const yearTotal = ref(0)
 const monthStats = ref(null)

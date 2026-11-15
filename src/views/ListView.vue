@@ -264,8 +264,22 @@ const currentThemeIndex = ref(Number(localStorage.getItem('cardTheme')) || 0)
 const currentTheme = computed(() => themes[currentThemeIndex.value])
 
 const currentDate = new Date()
-const currentYear = ref(currentDate.getFullYear())
-const currentMonth = ref(currentDate.getMonth() + 1)
+// 列表页专属记忆：list_year / list_month
+const currentYear = ref(
+  localStorage.getItem('list_year')
+    ? Number(localStorage.getItem('list_year'))
+    : currentDate.getFullYear(),
+)
+const currentMonth = ref(
+  localStorage.getItem('list_month')
+    ? Number(localStorage.getItem('list_month'))
+    : currentDate.getMonth() + 1,
+)
+
+watch([currentYear, currentMonth], ([newY, newM]) => {
+  localStorage.setItem('list_year', newY)
+  localStorage.setItem('list_month', newM)
+})
 const rawMeals = ref([])
 const rawExtras = ref([])
 const rawIngredients = ref([])
